@@ -292,12 +292,22 @@ class Import extends Factory
                                 }
                             }
 
-                            if ($connection->tableColumnExists($tmpTable, $column)) {
+                            if ($connection->tableColumnExists($tmpTable, $column)
+                                || $connection->tableColumnExists($connection->getTableName('pimgento_variant'), $column)) {
                                 if (!strlen($value)) {
                                     if ($connection->tableColumnExists($connection->getTableName('pimgento_variant'), $column)) {
                                         $data[$column] = 'v.' . $column;
-                                    } else {
+                                    } elseif ( ! isset($data[$column])) {
                                         $data[$column] = 'e.' . $column;
+                                    }
+
+                                    //set variant group label as product configurable name
+                                    foreach (array_keys($this->getStores()) as $store) {
+                                        if ($connection->tableColumnExists($tmpTable, $column.'-'.$store)) {
+                                            // unset variant group label in data array
+                                            unset($data[$column]);
+                                            $data[$column.'-'.$store] = 'v.' . $column;
+                                        }
                                     }
                                 } else {
                                     $data[$column] = new Expr('"' . $value . '"');
@@ -323,6 +333,21 @@ class Import extends Factory
                 $connection->insertFromSelect($configurable, $tmpTable, array_keys($data))
             );
         }
+    }
+
+    /**
+     * @return array
+     */
+    protected function getStores()
+    {
+        return array_merge(
+            $this->_helperConfig->getStores(array('lang')), // en_US
+            $this->_helperConfig->getStores(array('lang', 'channel_code')), // en_US-channel
+            $this->_helperConfig->getStores(array('channel_code')), // channel
+            $this->_helperConfig->getStores(array('currency')), // USD
+            $this->_helperConfig->getStores(array('channel_code', 'currency')), // channel-USD
+            $this->_helperConfig->getStores(array('lang', 'channel_code', 'currency')) // en_US-channel-USD
+        );
     }
 
     /**
