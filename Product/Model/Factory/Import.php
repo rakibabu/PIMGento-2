@@ -169,7 +169,7 @@ class Import extends Factory
 
         if (!$connection->tableColumnExists($tmpTable, 'url_key')) {
             $connection->addColumn($tmpTable, 'url_key', 'varchar(255) NOT NULL DEFAULT ""');
-            $connection->update($tmpTable, array('url_key' => new Expr('LOWER(`sku`)')));
+            $connection->update($tmpTable, array('url_key' => new Expr('REPLACE(LOWER(`sku`), \'.\', \'-\')')));
         }
 
         if ($connection->tableColumnExists($tmpTable, 'enabled')) {
@@ -224,11 +224,6 @@ class Import extends Factory
     {
         $connection = $this->_entities->getResource()->getConnection();
         $tmpTable = $this->_entities->getTableName($this->getCode());
-
-//        var_dump($this->getStores());
-//        var_dump($this->_helperConfig->getStores(array('lang')));
-//        var_dump($this->_helperConfig->getStores(array('lang', 'channel_code')));
-//        exit;
 
         if (!$this->moduleIsEnabled('Pimgento_Variant')) {
             $this->setStatus(false);
@@ -299,26 +294,26 @@ class Import extends Factory
                             }
 
                             if ($connection->tableColumnExists($tmpTable, $column)) {
-                                if (!strlen($value)) {
+                                if ( ! strlen($value)) {
                                     if ($connection->tableColumnExists($connection->getTableName('pimgento_variant'), $column)) {
-                                        if (strpos($column,'configurable_') !== false) {
+                                        if (strpos($column, 'configurable_') !== false) {
                                             unset($data[ $column ]);
                                             $data [ str_replace('configurable_', '', $column) ] = 'v.' . $column;
-                                        } elseif (strpos($column,'url_key-nl_NL') !== false) {
-                                            $data [ 'url_key' ] = 'v.' . $column;
+                                        } elseif (strpos($column, 'url_key-nl_NL') !== false) {
+                                            $data ['url_key'] = 'v.' . $column;
                                         } else {
-                                            $data[$column] = 'v.' . $column;
+                                            $data[ $column ] = 'v.' . $column;
                                         }
-                                    } elseif( ! isset($data[$column]) ) {
-                                        if (strpos($column,'configurable_') !== false) {
+                                    } elseif ( ! isset($data[ $column ])) {
+                                        if (strpos($column, 'configurable_') !== false) {
                                             unset($data[ $column ]);
                                             $data [ str_replace('configurable_', '', $column) ] = 'e.' . $column;
                                         } else {
-                                            $data[$column] = 'e.' . $column;
+                                            $data[ $column ] = 'e.' . $column;
                                         }
                                     }
                                 } else {
-                                    $data[$column] = new Expr('"' . $value . '"');
+                                    $data[ $column ] = new Expr('"' . $value . '"');
                                 }
                             } elseif ($connection->tableColumnExists($connection->getTableName('pimgento_variant'), $column)) {
                                 if (!strlen($value)) {
@@ -449,6 +444,7 @@ class Import extends Factory
             'enabled',
         );
 
+
         foreach ($columns as $column) {
 
             if (in_array($column, $except)) {
@@ -458,6 +454,7 @@ class Import extends Factory
             if (preg_match('/-unit/', $column)) {
                 continue;
             }
+
 
             $columnPrefix = explode('-', $column);
             $columnPrefix = reset($columnPrefix);
@@ -521,7 +518,7 @@ class Import extends Factory
             'sku'              => 'sku',
             'has_options'      => new Expr(0),
             'required_options' => new Expr(0),
-            'updated_at'       => new Expr('now()'),
+            'updated_at'       => new Expr('now()')
         );
 
         $table = $connection->getTableName('catalog_product_entity');
@@ -530,6 +527,7 @@ class Import extends Factory
             $values['row_id'] = '_entity_id';
             $values['created_in'] = new Expr(1);
             $values['updated_in'] = new Expr(VersionManager::MAX_VERSION);
+            $values['url_key'] = new Expr('REPLACE(LOWER(`sku`), \'.\', \'-\')');
         }
 
         $parents = $connection->select()->from($tmpTable, $values);
@@ -542,6 +540,7 @@ class Import extends Factory
         $values = array(
             'created_at' => new Expr('now()')
         );
+
         $connection->update($table, $values, 'created_at IS NULL');
     }
 
@@ -625,10 +624,7 @@ class Import extends Factory
                     }
                 }
             }
-
         }
-
-//        var_dump($values);exit;
 
         foreach($values as $storeId => $data) {
             $this->_entities->setValues(
