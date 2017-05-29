@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [100.2.6] - 2017-05-24
+
+  * fix: channel added in url_key column
+
 ## [100.2.5] - 2017-03-17
 
   * fix: fix image import with staging mode

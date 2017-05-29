@@ -886,7 +886,11 @@ class Import extends Factory
         $connection = $this->_entities->getResource()->getConnection();
         $tmpTable = $this->_entities->getTableName($this->getCode());
 
-        $stores = $this->_helperConfig->getStores('lang');
+        $stores = array_merge(
+            $this->_helperConfig->getStores(['lang']), // en_US
+            $this->_helperConfig->getStores(['lang', 'channel_code']) // en_US-channel
+        );
+
         $this->_urlRewriteHelper->createUrlTmpTable();
 
         foreach ($stores as $local => $affected) {
