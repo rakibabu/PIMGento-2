@@ -168,8 +168,8 @@ class Import extends Factory
         $connection->addColumn($tmpTable, '_status', 'INT(11) NOT NULL DEFAULT "2"'); // Disabled
 
         if (!$connection->tableColumnExists($tmpTable, 'url_key')) {
-            $connection->addColumn($tmpTable, 'url_key', 'varchar(255) NOT NULL DEFAULT ""');
-            $connection->update($tmpTable, array('url_key' => new Expr('REPLACE(LOWER(`sku`), \'.\', \'-\')')));
+            $connection->addColumn($tmpTable, 'url_key', 'varchar(255) NULL DEFAULT ""');
+//            $connection->update($tmpTable, array('url_key' => new Expr('REPLACE(LOWER(`sku`), \'.\', \'-\')')));
         }
 
         if ($connection->tableColumnExists($tmpTable, 'enabled')) {
@@ -527,7 +527,6 @@ class Import extends Factory
             $values['row_id'] = '_entity_id';
             $values['created_in'] = new Expr(1);
             $values['updated_in'] = new Expr(VersionManager::MAX_VERSION);
-            $values['url_key'] = new Expr('REPLACE(LOWER(`sku`), \'.\', \'-\')');
         }
 
         $parents = $connection->select()->from($tmpTable, $values);
@@ -661,7 +660,9 @@ class Import extends Factory
                         array(
                             '_entity_id',
                             '_axis',
-                            '_children'
+                            '_children',
+                            'sku',
+                            'groups'
                         )
                     )
                     ->where('_type_id = ?', 'configurable')
@@ -756,6 +757,69 @@ class Import extends Factory
                                 $connection->getTableName('catalog_product_super_link'), $values, array()
                             );
                         }
+                    }
+                }
+            }
+        }
+    }
+
+
+    /**
+     * Link configurable with children
+     */
+    public function setUrlKey()
+    {
+        $connection = $this->_entities->getResource()->getConnection();
+        $tmpTable = $this->_entities->getTableName($this->getCode());
+
+        if (!$this->moduleIsEnabled('Pimgento_Variant')) {
+            $this->setStatus(false);
+            $this->setMessage(
+                __('Module Pimgento_Variant is not enabled')
+            );
+        } else if (!$connection->tableColumnExists($tmpTable, 'groups')) {
+            $this->setStatus(false);
+            $this->setMessage(
+                __('Column groups not found')
+            );
+        } else {
+            $storeCodes = array_keys($this->getStores());
+
+            foreach ($storeCodes as $storeCode) {
+                if ($connection->tableColumnExists($tmpTable, 'url_key-'.$storeCode)) {
+
+                    $query = $connection->query(
+                        $connection->select()
+                            ->from(
+                                $tmpTable,
+                                array(
+                                    'url_key-'.$storeCode,
+                                    'sku',
+                                    'groups'
+                                )
+                            )
+                            ->where('_type_id = ?', 'simple')
+                    );
+
+                    while (($row = $query->fetch())) {
+
+                        $values = array(
+                            'url_key' => strtolower(str_replace('.','-',$row['sku'])),
+                            'url_key-'.$storeCode => strtolower(str_replace('.','-',$row['sku']))
+                        );
+
+                        if (empty($row['groups'])) {
+                            $values = array(
+                                'url_key' => strtolower($row['url_key-'.$storeCode]),
+                                'url_key-'.$storeCode => strtolower($row['url_key-'.$storeCode])
+                            );
+                        }
+
+                        $connection->update(
+                            $connection->getTableName($tmpTable),
+                            $values,
+                            'sku = "'.$row['sku'].'"'
+                        );
                     }
                 }
             }

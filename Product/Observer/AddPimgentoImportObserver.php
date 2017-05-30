@@ -91,6 +91,10 @@ class AddPimgentoImportObserver extends AbstractAddImportObserver implements Obs
 
         $afterEntitiesCreationSteps = array(
             array(
+                'comment' => __('Set url_key based on group'),
+                'method'  => 'setUrlKey',
+            ),
+            array(
                 'comment' => __('Set values to attributes'),
                 'method'  => 'setValues',
             ),
