@@ -628,11 +628,14 @@ class Import extends Factory
 
             foreach ($stores as $suffix => $affected) {
                 if (preg_match('/' . $suffix . '$/', $column)) {
+
                     foreach ($affected as $store) {
-                        if ( ! isset($values[ $store['store_id'] ])) {
-                            $values[ $store['store_id'] ] = array();
+                        if (strpos($column, $store['lang']) || strpos($column, $store['currency'])) {
+                            if ( ! isset($values[ $store['store_id'] ])) {
+                                $values[ $store['store_id'] ] = array();
+                            }
+                            $values[ $store['store_id'] ][ $columnPrefix ] = $column;
                         }
-                        $values[ $store['store_id'] ][ $columnPrefix ] = $column;
                     }
                 }
             }
