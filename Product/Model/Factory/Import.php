@@ -630,7 +630,7 @@ class Import extends Factory
                 if (preg_match('/' . $suffix . '$/', $column)) {
 
                     foreach ($affected as $store) {
-                        if (strpos($column, $store['lang']) || strpos($column, $store['currency'])) {
+                        if (strpos($column, $store['lang']) !== false || strpos($column, $store['currency']) !== false) {
                             if ( ! isset($values[ $store['store_id'] ])) {
                                 $values[ $store['store_id'] ] = array();
                             }
