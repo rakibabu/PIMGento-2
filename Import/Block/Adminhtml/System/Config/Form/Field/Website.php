@@ -48,7 +48,7 @@ class Website extends \Magento\Config\Block\System\Config\Form\Field\FieldArray\
     {
         if ($columnName == 'website' && isset($this->_columns[$columnName])) {
 
-            $websites = $this->_storeManager->getWebsites();
+            $websites = $this->_storeManager->getWebsites(true);
 
             $options = array();
             foreach ($websites as $website) {

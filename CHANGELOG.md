@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [100.2.8] - 2017-06-06
+
+  * add: channel configuration for default values
+
+## [100.2.7] - 2017-05-30
+
+  * fix: avoid duplicate URL key
+
 ## [100.2.6] - 2017-05-24
 
   * fix: channel added in url_key column

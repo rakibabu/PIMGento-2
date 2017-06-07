@@ -50,6 +50,7 @@ class Import extends Factory
 
     /**
      * list of allowed type_id that can be imported
+     *
      * @var string[]
      */
     protected $_allowedTypeId = ['simple', 'virtual'];
@@ -107,7 +108,8 @@ class Import extends Factory
         Media $media,
         Product $product,
         array $data = []
-    ) {
+    )
+    {
         parent::__construct($helperConfig, $eventManager, $moduleManager, $scopeConfig, $data);
 
         $this->_entities = $entities;
@@ -128,7 +130,7 @@ class Import extends Factory
     {
         $file = $this->getFileFullPath();
 
-        if (!is_file($file)) {
+        if ( ! is_file($file)) {
             $this->setContinue(false);
             $this->setStatus(false);
             $this->setMessage($this->getFileNotFoundErrorMessage());
@@ -167,7 +169,7 @@ class Import extends Factory
         $connection->addColumn($tmpTable, '_visibility', 'INT(11) NOT NULL DEFAULT "4"'); // catalog, search
         $connection->addColumn($tmpTable, '_status', 'INT(11) NOT NULL DEFAULT "2"'); // Disabled
 
-        if (!$connection->tableColumnExists($tmpTable, 'url_key')) {
+        if ( ! $connection->tableColumnExists($tmpTable, 'url_key')) {
             $connection->addColumn($tmpTable, 'url_key', 'varchar(255) NULL DEFAULT ""');
 //            $connection->update($tmpTable, array('url_key' => new Expr('REPLACE(LOWER(`sku`), \'.\', \'-\')')));
         }
@@ -185,7 +187,7 @@ class Import extends Factory
             $connection->update(
                 $tmpTable,
                 array(
-                    '_type_id' => new Expr("IF(`type_id` IN ($types), `type_id`, 'simple')")
+                    '_type_id' => new Expr("IF(`type_id` IN ($types), `type_id`, 'simple')"),
                 )
             );
         }
@@ -225,12 +227,12 @@ class Import extends Factory
         $connection = $this->_entities->getResource()->getConnection();
         $tmpTable = $this->_entities->getTableName($this->getCode());
 
-        if (!$this->moduleIsEnabled('Pimgento_Variant')) {
+        if ( ! $this->moduleIsEnabled('Pimgento_Variant')) {
             $this->setStatus(false);
             $this->setMessage(
                 __('Module Pimgento_Variant is not enabled')
             );
-        } else if (!$connection->tableColumnExists($tmpTable, 'groups')) {
+        } else if ( ! $connection->tableColumnExists($tmpTable, 'groups')) {
             $this->setStatus(false);
             $this->setMessage(
                 __('Column groups not found')
@@ -240,13 +242,13 @@ class Import extends Factory
             $connection->addColumn($tmpTable, '_axis', 'VARCHAR(255) NULL');
 
             $data = array(
-                'sku' => 'e.groups',
-                'url_key' => 'v.url_key-nl_NL-ecommerce',
-                '_children' => new Expr('GROUP_CONCAT(e.sku SEPARATOR ",")'),
-                '_type_id' => new Expr('"configurable"'),
+                'sku'                => 'e.groups',
+                'url_key'            => 'v.url_key-nl_NL-ecommerce',
+                '_children'          => new Expr('GROUP_CONCAT(e.sku SEPARATOR ",")'),
+                '_type_id'           => new Expr('"configurable"'),
                 '_options_container' => new Expr('"container1"'),
-                '_status' => 'e._status',
-                '_axis' => 'v.axis'
+                '_status'            => 'e._status',
+                '_axis'              => 'v.axis',
             );
 
             if ($connection->tableColumnExists($tmpTable, 'family')) {
@@ -274,7 +276,7 @@ class Import extends Factory
                     );
 
                     foreach ($additional as $attribute) {
-                        $attr  = $attribute['attribute'];
+                        $attr = $attribute['attribute'];
                         $value = $attribute['value'];
 
                         $columns = array(trim($attr));
@@ -316,7 +318,7 @@ class Import extends Factory
                                     $data[ $column ] = new Expr('"' . $value . '"');
                                 }
                             } elseif ($connection->tableColumnExists($connection->getTableName('pimgento_variant'), $column)) {
-                                if (!strlen($value)) {
+                                if ( ! strlen($value)) {
                                     //set variant group label as product configurable name
                                     foreach (array_keys($this->getStores()) as $store) {
                                         if ($connection->tableColumnExists($tmpTable, $column . '-' . $store)) {
@@ -376,7 +378,7 @@ class Import extends Factory
         $connection = $this->_entities->getResource()->getConnection();
         $tmpTable = $this->_entities->getTableName($this->getCode());
 
-        if (!$connection->tableColumnExists($tmpTable, 'family')) {
+        if ( ! $connection->tableColumnExists($tmpTable, 'family')) {
             $this->setStatus(false);
             $this->setMessage(
                 __('Column family is missing')
@@ -460,26 +462,39 @@ class Import extends Factory
             $columnPrefix = reset($columnPrefix);
 
             if ($connection->tableColumnExists($tmpTable, $column)) {
+                //get number of chars to remove from code in order to use the substring.
+                $prefixL = strlen($columnPrefix . '_') + 1;
+
+                // Sub select to increase performance versus FIND_IN_SET
+                $subSelect = $connection->select()
+                    ->from(
+                        array('c' => $connection->getTableName('pimgento_entities')),
+                        array('code' => 'SUBSTRING(`c`.`code`,' . $prefixL . ')', 'entity_id' => 'c.entity_id')
+                    )
+                    ->where("c.code like '" . $column . "_%' ")
+                    ->where("c.import = ?", 'option');
+
+                // if no option no need to continue process
+                if ( ! $connection->query($subSelect)->rowCount()) {
+                    continue;
+                }
+                //in case of multiselect
+                $conditionJoin = "IF ( locate(',', " . $column . ") > 0 , " . "`p`.`" . $column . "` like " .
+                    new Expr("CONCAT('%', c1.code, '%')") . ", p." . $column . " = c1.code )";
+
                 $select = $connection->select()
                     ->from(
                         array('p' => $tmpTable),
                         array(
                             'sku'       => 'p.sku',
-                            'entity_id' => 'p._entity_id'
+                            'entity_id' => 'p._entity_id',
                         )
                     )
-                    ->distinct()
                     ->joinInner(
+                        array('c1' => new Expr('(' . (string) $subSelect . ')')),
+                        new Expr($conditionJoin),
                         array(
-                            'c' => $connection->getTableName('pimgento_entities')
-                        ),
-                        'FIND_IN_SET(
-                            REPLACE(`c`.`code`, "' . $columnPrefix . '_", ""),
-                            `p`.`' . $column . '`
-                        )
-                        AND `c`.`import` = "option"',
-                        array(
-                            $column => new Expr('GROUP_CONCAT(`c`.`entity_id` SEPARATOR ",")')
+                            $column => new Expr('GROUP_CONCAT(`c1`.`entity_id` SEPARATOR ",")'),
                         )
                     )
                     ->group('p.sku');
@@ -518,7 +533,7 @@ class Import extends Factory
             'sku'              => 'sku',
             'has_options'      => new Expr(0),
             'required_options' => new Expr(0),
-            'updated_at'       => new Expr('now()')
+            'updated_at'       => new Expr('now()'),
         );
 
         $table = $connection->getTableName('catalog_product_entity');
@@ -537,7 +552,7 @@ class Import extends Factory
         );
 
         $values = array(
-            'created_at' => new Expr('now()')
+            'created_at' => new Expr('now()'),
         );
 
         $connection->update($table, $values, 'created_at IS NULL');
@@ -585,7 +600,7 @@ class Import extends Factory
                 'options_container' => '_options_container',
                 'tax_class_id'      => '_tax_class_id',
                 'visibility'        => '_visibility',
-            )
+            ),
         );
 
         if ($connection->tableColumnExists($tmpTable, 'enabled')) {
@@ -595,7 +610,7 @@ class Import extends Factory
         $taxClasses = $this->_productHelper->getProductTaxClasses();
         if (count($taxClasses)) {
             foreach ($taxClasses as $storeId => $taxClassId) {
-                $values[$storeId]['tax_class_id'] = new Expr($taxClassId);
+                $values[ $storeId ]['tax_class_id'] = new Expr($taxClassId);
             }
         }
 
@@ -611,21 +626,23 @@ class Import extends Factory
             $columnPrefix = explode('-', $column);
             $columnPrefix = reset($columnPrefix);
 
-            $values[0][$columnPrefix] = $column;
-
             foreach ($stores as $suffix => $affected) {
                 if (preg_match('/' . $suffix . '$/', $column)) {
                     foreach ($affected as $store) {
-                        if (!isset($values[$store['store_id']])) {
-                            $values[$store['store_id']] = array();
+                        if ( ! isset($values[ $store['store_id'] ])) {
+                            $values[ $store['store_id'] ] = array();
                         }
-                        $values[$store['store_id']][$columnPrefix] = $column;
+                        $values[ $store['store_id'] ][ $columnPrefix ] = $column;
                     }
                 }
             }
+
+            if ( ! isset($values[0][ $columnPrefix ])) {
+                $values[0][ $columnPrefix ] = $column;
+            }
         }
 
-        foreach($values as $storeId => $data) {
+        foreach ($values as $storeId => $data) {
             $this->_entities->setValues(
                 $this->getCode(), $connection->getTableName('catalog_product_entity'), $data, 4, $storeId, 1
             );
@@ -640,12 +657,12 @@ class Import extends Factory
         $connection = $this->_entities->getResource()->getConnection();
         $tmpTable = $this->_entities->getTableName($this->getCode());
 
-        if (!$this->moduleIsEnabled('Pimgento_Variant')) {
+        if ( ! $this->moduleIsEnabled('Pimgento_Variant')) {
             $this->setStatus(false);
             $this->setMessage(
                 __('Module Pimgento_Variant is not enabled')
             );
-        } else if (!$connection->tableColumnExists($tmpTable, 'groups')) {
+        } else if ( ! $connection->tableColumnExists($tmpTable, 'groups')) {
             $this->setStatus(false);
             $this->setMessage(
                 __('Column groups not found')
@@ -662,7 +679,7 @@ class Import extends Factory
                             '_axis',
                             '_children',
                             'sku',
-                            'groups'
+                            'groups',
                         )
                     )
                     ->where('_type_id = ?', 'configurable')
@@ -670,13 +687,17 @@ class Import extends Factory
                     ->where('_children IS NOT NULL')
             );
 
+            $stepSize = 500;
+            $valuesLabels = [];
+            $valuesRelations = [];
+            $valuesSuperLink = [];
             while (($row = $query->fetch())) {
                 $attributes = explode(',', $row['_axis']);
 
                 $position = 0;
 
                 foreach ($attributes as $id) {
-                    if (!is_numeric($id)) {
+                    if ( ! is_numeric($id)) {
                         continue;
                     }
 
@@ -687,15 +708,15 @@ class Import extends Factory
                             ->limit(1)
                     );
 
-                    if (!$hasOptions) {
+                    if ( ! $hasOptions) {
                         continue;
                     }
 
                     /* catalog_product_super_attribute */
                     $values = array(
-                        'product_id' => $row['_entity_id'],
+                        'product_id'   => $row['_entity_id'],
                         'attribute_id' => $id,
-                        'position' => $position++,
+                        'position'     => $position ++,
                     );
                     $connection->insertOnDuplicate(
                         $connection->getTableName('catalog_product_super_attribute'), $values, array()
@@ -711,14 +732,11 @@ class Import extends Factory
                     );
 
                     foreach ($stores as $storeId => $affected) {
-                        $values = array(
+                        $valuesLabels[] = array(
                             'product_super_attribute_id' => $superAttributeId,
-                            'store_id' => $storeId,
-                            'use_default' => 0,
-                            'value' => ''
-                        );
-                        $connection->insertOnDuplicate(
-                            $connection->getTableName('catalog_product_super_attribute_label'), $values, array()
+                            'store_id'                   => $storeId,
+                            'use_default'                => 0,
+                            'value'                      => '',
                         );
                     }
 
@@ -731,7 +749,7 @@ class Import extends Factory
                                 ->from(
                                     $connection->getTableName('catalog_product_entity'),
                                     array(
-                                        'entity_id'
+                                        'entity_id',
                                     )
                                 )
                                 ->where('sku = ?', $child)
@@ -740,25 +758,63 @@ class Import extends Factory
 
                         if ($childId) {
                             /* catalog_product_relation */
-                            $values = array(
+                            $valuesRelations[] = array(
                                 'parent_id' => $row['_entity_id'],
-                                'child_id' => $childId,
-                            );
-                            $connection->insertOnDuplicate(
-                                $connection->getTableName('catalog_product_relation'), $values, array()
+                                'child_id'  => $childId,
                             );
 
                             /* catalog_product_super_link */
-                            $values = array(
+                            $valuesSuperLink[] = array(
                                 'product_id' => $childId,
-                                'parent_id' => $row['_entity_id'],
-                            );
-                            $connection->insertOnDuplicate(
-                                $connection->getTableName('catalog_product_super_link'), $values, array()
+                                'parent_id'  => $row['_entity_id'],
                             );
                         }
                     }
+
+
+                    if (count($valuesSuperLink) > $stepSize) {
+                        $connection->insertOnDuplicate(
+                            $connection->getTableName('catalog_product_super_attribute_label'),
+                            $valuesLabels,
+                            array()
+                        );
+
+                        $connection->insertOnDuplicate(
+                            $connection->getTableName('catalog_product_relation'),
+                            $valuesRelations,
+                            array()
+                        );
+                        $connection->insertOnDuplicate(
+                            $connection->getTableName('catalog_product_super_link'),
+                            $valuesSuperLink,
+                            array()
+                        );
+
+
+                        $valuesLabels = [];
+                        $valuesRelations = [];
+                        $valuesSuperLink = [];
+                    }
                 }
+            }
+
+            if (count($valuesSuperLink) > 0) {
+                $connection->insertOnDuplicate(
+                    $connection->getTableName('catalog_product_super_attribute_label'),
+                    $valuesLabels,
+                    array()
+                );
+
+                $connection->insertOnDuplicate(
+                    $connection->getTableName('catalog_product_relation'),
+                    $valuesRelations,
+                    array()
+                );
+                $connection->insertOnDuplicate(
+                    $connection->getTableName('catalog_product_super_link'),
+                    $valuesSuperLink,
+                    array()
+                );
             }
         }
     }
@@ -772,12 +828,12 @@ class Import extends Factory
         $connection = $this->_entities->getResource()->getConnection();
         $tmpTable = $this->_entities->getTableName($this->getCode());
 
-        if (!$this->moduleIsEnabled('Pimgento_Variant')) {
+        if ( ! $this->moduleIsEnabled('Pimgento_Variant')) {
             $this->setStatus(false);
             $this->setMessage(
                 __('Module Pimgento_Variant is not enabled')
             );
-        } else if (!$connection->tableColumnExists($tmpTable, 'groups')) {
+        } else if ( ! $connection->tableColumnExists($tmpTable, 'groups')) {
             $this->setStatus(false);
             $this->setMessage(
                 __('Column groups not found')
@@ -786,16 +842,16 @@ class Import extends Factory
             $storeCodes = array_keys($this->getStores());
 
             foreach ($storeCodes as $storeCode) {
-                if ($connection->tableColumnExists($tmpTable, 'url_key-'.$storeCode)) {
+                if ($connection->tableColumnExists($tmpTable, 'url_key-' . $storeCode)) {
 
                     $query = $connection->query(
                         $connection->select()
                             ->from(
                                 $tmpTable,
                                 array(
-                                    'url_key-'.$storeCode,
+                                    'url_key-' . $storeCode,
                                     'sku',
-                                    'groups'
+                                    'groups',
                                 )
                             )
                             ->where('_type_id = ?', 'simple')
@@ -804,21 +860,21 @@ class Import extends Factory
                     while (($row = $query->fetch())) {
 
                         $values = array(
-                            'url_key' => strtolower(str_replace('.','-',$row['sku'])),
-                            'url_key-'.$storeCode => strtolower(str_replace('.','-',$row['sku']))
+                            'url_key'               => strtolower(str_replace('.', '-', $row['sku'])),
+                            'url_key-' . $storeCode => strtolower(str_replace('.', '-', $row['sku'])),
                         );
 
                         if (empty($row['groups'])) {
                             $values = array(
-                                'url_key' => strtolower($row['url_key-'.$storeCode]),
-                                'url_key-'.$storeCode => strtolower($row['url_key-'.$storeCode])
+                                'url_key'               => strtolower($row[ 'url_key-' . $storeCode ]),
+                                'url_key-' . $storeCode => strtolower($row[ 'url_key-' . $storeCode ]),
                             );
                         }
 
                         $connection->update(
                             $connection->getTableName($tmpTable),
                             $values,
-                            'sku = "'.$row['sku'].'"'
+                            'sku = "' . $row['sku'] . '"'
                         );
                     }
                 }
@@ -846,7 +902,7 @@ class Import extends Factory
                     $tmpTable,
                     array(
                         'product_id' => '_entity_id',
-                        'website_id' => new Expr($websiteId)
+                        'website_id' => new Expr($websiteId),
                     )
                 );
             $connection->query(
@@ -865,7 +921,7 @@ class Import extends Factory
         $connection = $this->_entities->getResource()->getConnection();
         $tmpTable = $this->_entities->getTableName($this->getCode());
 
-        if (!$connection->tableColumnExists($tmpTable, 'categories')) {
+        if ( ! $connection->tableColumnExists($tmpTable, 'categories')) {
             $this->setStatus(false);
             $this->setMessage(
                 __('Column categories not found')
@@ -875,7 +931,7 @@ class Import extends Factory
             $select = $connection->select()
                 ->from(
                     array(
-                        'c' => $connection->getTableName('pimgento_entities')
+                        'c' => $connection->getTableName('pimgento_entities'),
                     ),
                     array()
                 )
@@ -885,7 +941,7 @@ class Import extends Factory
                     array(
                         'category_id' => 'c.entity_id',
                         'product_id'  => 'p._entity_id',
-                        'position'    => new Expr(1)
+                        'position'    => new Expr(1),
                     )
                 )
                 ->joinInner(
@@ -917,13 +973,13 @@ class Import extends Factory
         $websiteId = $this->_helperConfig->getDefaultScopeId();
 
         $values = array(
-            'product_id' => '_entity_id',
-            'stock_id' => new Expr(1),
-            'qty' => new Expr(0),
-            'is_in_stock' => new Expr(0),
-            'low_stock_date' => new Expr('NULL'),
+            'product_id'                => '_entity_id',
+            'stock_id'                  => new Expr(1),
+            'qty'                       => new Expr(0),
+            'is_in_stock'               => new Expr(0),
+            'low_stock_date'            => new Expr('NULL'),
             'stock_status_changed_auto' => new Expr(0),
-            'website_id' => new Expr($websiteId),
+            'website_id'                => new Expr($websiteId),
         );
 
         $select = $connection->select()->from($tmpTable, $values);
@@ -962,11 +1018,38 @@ class Import extends Factory
             }
 
             if ($connection->tableColumnExists($tmpTable, $column)) {
+
+                $duplicates = $connection->fetchCol(
+                    $connection->select()
+                        ->from($tmpTable, [$column])
+                        ->group($column)
+                        ->having('COUNT(*) > 1')
+                );
+
+                foreach ($duplicates as $urlKey) {
+                    if ($urlKey) {
+                        $connection->update(
+                            $tmpTable,
+                            [$column => new Expr('CONCAT(`' . $column . '`, "-", `sku`)')],
+                            ['`' . $column . '` = ?' => $urlKey]
+                        );
+                    }
+                }
+
                 foreach ($affected as $store) {
 
                     if ($store['store_id'] == 0) {
                         continue;
                     }
+
+                    $this->_entities->setValues(
+                        $this->getCode(),
+                        $connection->getTableName('catalog_product_entity'),
+                        ['url_key' => $column],
+                        4,
+                        $store['store_id'],
+                        1
+                    );
 
                     $this->_urlRewriteHelper->rewriteUrls($this->getCode(), $store['store_id'], $column);
                 }
@@ -991,7 +1074,7 @@ class Import extends Factory
     {
         $types = array(
             \Magento\Framework\App\Cache\Type\Block::TYPE_IDENTIFIER,
-            \Magento\PageCache\Model\Cache\Type::TYPE_IDENTIFIER
+            \Magento\PageCache\Model\Cache\Type::TYPE_IDENTIFIER,
         );
 
         foreach ($types as $type) {
@@ -1092,7 +1175,7 @@ class Import extends Factory
         $this->_mediaHelper->initHelper(dirname($this->getFileFullPath()));
 
         $connection = $this->_entities->getResource()->getConnection();
-        $tmpTable   = $this->_entities->getTableName($this->getCode());
+        $tmpTable = $this->_entities->getTableName($this->getCode());
 
         $tableColumns = array_keys($connection->describeTable($tmpTable));
         $fields = $this->_mediaHelper->getFields();
