@@ -114,6 +114,7 @@ class Entities extends AbstractDb
 
         /* Create new table */
         $table = $connection->newTable($tableName);
+        $table->setOption('type', 'MyISAM');
 
         foreach ($fields as $field) {
             if ($field) {
