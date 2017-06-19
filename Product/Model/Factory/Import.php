@@ -242,8 +242,8 @@ class Import extends Factory
             $connection->addColumn($tmpTable, '_axis', 'VARCHAR(255) NULL');
 
             $data = array(
-                'sku'                => 'e.groups',
-                'url_key'            => 'v.url_key-nl_NL-ecommerce',
+                'sku'                => 'e.configurable_sku',
+                'url_key'            => 'v.url_key-en_GB-running_shop',
                 '_children'          => new Expr('GROUP_CONCAT(e.sku SEPARATOR ",")'),
                 '_type_id'           => new Expr('"configurable"'),
                 '_options_container' => new Expr('"container1"'),
@@ -630,7 +630,7 @@ class Import extends Factory
                 if (preg_match('/' . $suffix . '$/', $column)) {
 
                     foreach ($affected as $store) {
-                        if (strpos($column, $store['lang']) !== false || strpos($column, $store['currency']) !== false) {
+                        if (strpos($column, $store['lang']) || strpos($column, $store['currency'])) {
                             if ( ! isset($values[ $store['store_id'] ])) {
                                 $values[ $store['store_id'] ] = array();
                             }
