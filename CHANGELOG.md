@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file.
 
+## [100.2.14] - 2017-07-05
+
+  * fix: event names
+  * fix: static values for entity
+  * fix: clean System Urls Before Insertion
+  * fix: category URL key increment on multi-store
+
+## [100.2.12] - 2017-07-04
+
+  * fix: overwriting of existing category product positions when importing products
+  * fix: set Magento value data to NULL for empty Pim value
+
+## [100.2.11] - 2017-06-29
+
+  * fix: Generate image cache
+  * fix: localized, multiselect attribute import
+
+## [100.2.10] - 2017-06-28
+
+  * fix: area code in CLI
+  * fix: data overwritten by last language
+  * fix: url rewrite suffix for product and category
+
+## [100.2.9] - 2017-06-22
+
+  * add: New configuration for not erase category url key on update
+
 ## [100.2.8] - 2017-06-06
 
   * add: channel configuration for default values

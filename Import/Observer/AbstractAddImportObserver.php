@@ -49,7 +49,7 @@ abstract class AbstractAddImportObserver
         return [
             'code'             => $this->getImportCode(),
             'name'             => $this->getImportName(),
-            'class'            => $this->getImportClassname(),
+            'class'            => $this->getImportClassName(),
             'sort_order'       => $this->getImportSortOrder(),
             'file_is_required' => $this->isImportFileRequired(),
             'steps'            => $this->getStepsDefinition()
@@ -61,17 +61,17 @@ abstract class AbstractAddImportObserver
      *
      * @return string
      */
-    protected function getImportClassname()
+    protected function getImportClassName()
     {
         $response = new DataObject();
-        $response->setData('import_classname', $this->getImportDefaultClassname());
+        $response->setData('import_class', $this->getImportDefaultClassname());
 
         $this->eventManager->dispatch(
-            'pimgento_'.$this->getImportCode().'product_import_classname',
+            'pimgento_' . $this->getImportCode() . '_import_class',
             ['response' => $response]
         );
 
-        return $response->getData('import_classname');
+        return $response->getData('import_class');
     }
 
     /**
@@ -88,7 +88,7 @@ abstract class AbstractAddImportObserver
         $response->setData($fieldName, []);
 
         $this->eventManager->dispatch(
-            'pimgento_'.$this->getImportCode().'_import_'.$eventPrefix,
+            'pimgento_' . $this->getImportCode() . '_import_' . $eventPrefix,
             ['response' => $response]
         );
 
@@ -96,7 +96,7 @@ abstract class AbstractAddImportObserver
     }
 
     /**
-     * Is a file is required for thie import
+     * Is a file is required for this import
      *
      * @return bool
      */

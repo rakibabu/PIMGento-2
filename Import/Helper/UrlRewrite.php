@@ -77,21 +77,20 @@ class UrlRewrite extends AbstractHelper
     /**
      * Perform url rewriting
      *
-     * @param string  $code
-     * @param int     $storeId
-     * @param string  $column
+     * @param string $code
+     * @param int    $storeId
+     * @param string $column
+     * @param string $urlSuffix
      *
      * @return void
      */
-    public function rewriteUrls($code, $storeId, $column)
+    public function rewriteUrls($code, $storeId, $column, $urlSuffix)
     {
         $connection         = $this->_entities->getResource()->getConnection();
         $tmpTable           = $this->_entities->getTableName($code);
         $tmpUrlRewriteTable = $connection->getTableName('tmp_pimgento_rewrite');
         $urlRewriteTable    = $connection->getTableName('url_rewrite');
         $targetPathExpr     = new Expr('CONCAT("catalog/' . $code . '/view/id/", `_entity_id`)');
-
-        $urlSuffix = $this->scopeConfig->getValue('catalog/seo/category_url_suffix');
 
         // Fill temporary url table
         $values = [
@@ -163,6 +162,7 @@ class UrlRewrite extends AbstractHelper
     /**
      * URL rewrite cleaning
      *
+     * @param int $storeId
      * @return void
      */
     protected function _cleanSystemUrlsBeforeInsertion($storeId)
@@ -174,7 +174,7 @@ class UrlRewrite extends AbstractHelper
         $select = $connection->select()
             ->from(
                 ['t' => $tmpUrlRewriteTable],
-                ['entity_id', 'url_rewrite_id']
+                ['entity_id', 'url_rewrite_id', 'entity_type']
             )
             ->where('`request_path` <> `old_request_path` AND `url_rewrite_id` IS NOT NULL AND store_id =' . $storeId);
         $urls = $connection->fetchAll($select);
@@ -182,16 +182,31 @@ class UrlRewrite extends AbstractHelper
         $entityIdsToDelete = [];
         $urlIdsToKeep = [];
         foreach ($urls as $url) {
-            $entityIdsToDelete[] = (int) $url['entity_id'];
-            $urlIdsToKeep[]      = (int) $url['url_rewrite_id'];
+            // Marking type of url rewrites entity types to delete
+            $entityIdsToDelete[$url['entity_type']][] = (int)$url['entity_id'];
+            $urlIdsToKeep[] = (int)$url['url_rewrite_id'];
         }
 
         if (count($entityIdsToDelete)) {
+            foreach ($entityIdsToDelete as $entityType => $subEntityIdsToDelete) {
+                $connection->delete(
+                    $urlRewriteTable,
+                    'entity_id IN (' . implode(',', $subEntityIdsToDelete) . ')
+                     AND entity_type = "' . $entityType . '"
+                     AND url_rewrite_id NOT IN (' . implode(',', $subEntityIdsToDelete) . ')
+                     AND store_id = ' . $storeId
+                );
 
-            $connection->delete(
-                $urlRewriteTable,
-                'entity_id IN ('.implode(',',$entityIdsToDelete).') AND url_rewrite_id NOT IN ('.implode(',',$entityIdsToDelete).') AND store_id = '.$storeId
-            );
+                // Delete urls associated to the products in that category
+                if ($entityType == 'category') {
+                    foreach ($subEntityIdsToDelete as $catEntity) {
+                        $connection->delete(
+                            $urlRewriteTable,
+                            'target_path LIKE ("%category/' . $catEntity . '") AND store_id = ' . $storeId
+                        );
+                    }
+                }
+            }
         }
     }
 

@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Store:etc/config.xsd">
+    <default>
+        <pimgento>
+            <category>
+                <update_url_key>1</update_url_key>
+            </category>
+        </pimgento>
+    </default>
+</config>
