@@ -471,7 +471,7 @@ class Import extends Factory
                         array('c' => $connection->getTableName('pimgento_entities')),
                         array('code' => 'SUBSTRING(`c`.`code`,' . $prefixL . ')', 'entity_id' => 'c.entity_id')
                     )
-                    ->where("c.code like '" . $column . "_%' ")
+                    ->where("c.code like '".$columnPrefix."_%' ")
                     ->where("c.import = ?", 'option');
 
                 // if no option no need to continue process
@@ -479,8 +479,8 @@ class Import extends Factory
                     continue;
                 }
                 //in case of multiselect
-                $conditionJoin = "IF ( locate(',', " . $column . ") > 0 , " . "`p`.`" . $column . "` like " .
-                    new Expr("CONCAT('%', c1.code, '%')") . ", p." . $column . " = c1.code )";
+                $conditionJoin = "IF ( locate(',', `".$column."`) > 0 , ". "`p`.`".$column."` like ".
+                    new Expr("CONCAT('%', `c1`.`code`, '%')") .", `p`.`".$column."` = `c1`.`code` )";
 
                 $select = $connection->select()
                     ->from(
@@ -627,8 +627,7 @@ class Import extends Factory
             $columnPrefix = reset($columnPrefix);
 
             foreach ($stores as $suffix => $affected) {
-                if (preg_match('/' . $suffix . '$/', $column)) {
-
+                if (preg_match('/^' . $columnPrefix . '-' . $suffix . '$/', $column)) {
                     foreach ($affected as $store) {
                         if (strpos($column, $store['lang']) !== false || strpos($column, $store['currency']) !== false) {
                             if ( ! isset($values[ $store['store_id'] ])) {
@@ -943,8 +942,7 @@ class Import extends Factory
                     'FIND_IN_SET(`c`.`code`, `p`.`categories`) AND `c`.`import` = "category"',
                     array(
                         'category_id' => 'c.entity_id',
-                        'product_id'  => 'p._entity_id',
-                        'position'    => new Expr(1),
+                        'product_id'  => 'p._entity_id'
                     )
                 )
                 ->joinInner(
@@ -957,7 +955,7 @@ class Import extends Factory
                 $connection->insertFromSelect(
                     $select,
                     $connection->getTableName('catalog_category_product'),
-                    array('category_id', 'product_id', 'position'),
+                    array('category_id', 'product_id'),
                     1
                 )
             );
@@ -1054,7 +1052,12 @@ class Import extends Factory
                         1
                     );
 
-                    $this->_urlRewriteHelper->rewriteUrls($this->getCode(), $store['store_id'], $column);
+                    $this->_urlRewriteHelper->rewriteUrls(
+                        $this->getCode(),
+                        $store['store_id'],
+                        $column,
+                        $this->_scopeConfig->getValue('catalog/seo/product_url_suffix')
+                    );
                 }
             }
         }

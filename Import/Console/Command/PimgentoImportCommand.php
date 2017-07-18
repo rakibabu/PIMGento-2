@@ -58,7 +58,12 @@ class PimgentoImportCommand extends Command
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        $this->_appState->setAreaCode(Area::AREA_ADMINHTML);
+        try {
+            $this->_appState->setAreaCode(Area::AREA_ADMINHTML);
+        } catch (\Magento\Framework\Exception\LocalizedException $e) {
+            $output->writeln('Area code already set');
+        }
+
         $code = $input->getOption(self::IMPORT_CODE);
         $file = $input->getOption(self::IMPORT_FILE);
 

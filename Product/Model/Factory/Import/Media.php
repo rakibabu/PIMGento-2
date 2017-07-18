@@ -11,6 +11,7 @@ use \Magento\Framework\Module\Manager as moduleManager;
 use \Magento\Framework\App\Config\ScopeConfigInterface as scopeConfig;
 use \Magento\Framework\DB\Adapter\AdapterInterface;
 use \Magento\Framework\DB\Ddl\Table;
+use \Magento\Catalog\Model\Product\Image;
 use \Zend_Db_Expr as Expr;
 
 class Media extends Factory
@@ -27,6 +28,11 @@ class Media extends Factory
     protected $_entities;
 
     /**
+     * @var Image $image
+     */
+    protected $image;
+
+    /**
      * PHP Constructor
      *
      * @param \Pimgento\Import\Helper\Config                     $helperConfig
@@ -35,6 +41,7 @@ class Media extends Factory
      * @param \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig
      * @param \Pimgento\Entities\Model\Entities                  $entities
      * @param \Pimgento\Product\Helper\Media                     $mediaHelper
+     * @param \Magento\Catalog\Model\Product\Image               $image
      * @param array                                              $data
      */
     public function __construct(
@@ -44,12 +51,14 @@ class Media extends Factory
         scopeConfig $scopeConfig,
         Entities $entities,
         mediaHelper $mediaHelper,
+        Image $image,
         array $data = []
     ) {
         parent::__construct($helperConfig, $eventManager, $moduleManager, $scopeConfig, $data);
 
         $this->_entities = $entities;
         $this->_mediaHelper = $mediaHelper;
+        $this->image = $image;
     }
 
     /**
@@ -336,6 +345,9 @@ class Media extends Factory
                 }
 
                 copy($from, $to);
+
+                $this->image->setBaseFile($media['to']);
+                $this->image->saveFile();
             }
         }
     }

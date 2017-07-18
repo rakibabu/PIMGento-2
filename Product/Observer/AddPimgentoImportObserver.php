@@ -145,7 +145,7 @@ class AddPimgentoImportObserver extends AbstractAddImportObserver implements Obs
 
         return array_merge(
             $stepsBefore,
-            $this->getAdditionnalSteps('update_entities_add_steps', 'Update_entities_steps'),
+            $this->getAdditionnalSteps('update_entities_add_steps', 'update_entities_steps'),
             $afterEntitiesCreationSteps,
             $this->getAdditionnalSteps(),
             $stepsAfter

@@ -116,17 +116,22 @@ class Import extends Factory
 
         $stores = $this->_helperConfig->getStores('lang');
 
-        $keys = [];
-
         foreach ($stores as $local => $affected) {
+
+            $keys = [];
+
             if ($connection->tableColumnExists($tmpTable, 'label-' . $local)) {
 
                 $connection->addColumn($tmpTable, 'url_key-' . $local, 'VARCHAR(255) NOT NULL DEFAULT ""');
 
-                $query = $connection->query(
-                    $connection->select()
-                        ->from($tmpTable, ['entity_id' => '_entity_id', 'name' => 'label-' . $local])
-                );
+                $select = $connection->select()
+                    ->from($tmpTable, ['entity_id' => '_entity_id', 'name' => 'label-' . $local]);
+
+                if (!$this->_scopeConfig->getValue('pimgento/category/update_url_key')) {
+                    $select->where('_is_new = ?', 1);
+                }
+
+                $query = $connection->query($select);
 
                 while (($row = $query->fetch())) {
                     $urlKey = $this->_category->formatUrlKey($row['name']);
@@ -174,7 +179,7 @@ class Import extends Factory
             if ($connection->tableColumnExists($tmpTable, 'url_key-' . $local)) {
                 $connection->addColumn($tmpTable, '_url_rewrite-' . $local, 'VARCHAR(255) NOT NULL DEFAULT ""');
                 $updateRewrite[] = 'c1.`_url_rewrite-' . $local . '` =
-                    TRIM(BOTH "/" FROM CONCAT(c2.`_url_rewrite-' . $local . '`, "/", c1.`url_key-' . $local . '`))';
+                    IF(c1.`url_key-' . $local . '` <> "", TRIM(BOTH "/" FROM CONCAT(c2.`_url_rewrite-' . $local . '`, "/", c1.`url_key-' . $local . '`)), "")';
             }
         }
 
@@ -362,7 +367,12 @@ class Import extends Factory
                         continue;
                     }
 
-                    $this->_urlRewriteHelper->rewriteUrls($this->getCode(), $store['store_id'], $column);
+                    $this->_urlRewriteHelper->rewriteUrls(
+                        $this->getCode(),
+                        $store['store_id'],
+                        $column,
+                        $this->_scopeConfig->getValue('catalog/seo/category_url_suffix')
+                    );
                 }
             }
 
