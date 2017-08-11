@@ -85,11 +85,12 @@ class Import extends Factory
      */
     public function removeColumns()
     {
-        $connection = $this->_entities->getResource()->getConnection();
+        $resource = $this->_entities->getResource();
+        $connection = $resource->getConnection();
 
         $except = array('code', 'axis');
 
-        $variantTable = $connection->getTableName('pimgento_variant');
+        $variantTable = $resource->getTable('pimgento_variant');
 
         $columns = array_keys($connection->describeTable($variantTable));
 
@@ -107,12 +108,13 @@ class Import extends Factory
      */
     public function addColumns()
     {
-        $connection = $this->_entities->getResource()->getConnection();
+        $resource = $this->_entities->getResource();
+        $connection = $resource->getConnection();
         $tmpTable = $this->_entities->getTableName($this->getCode());
 
         $except = array('code', 'axis', 'type', '_entity_id', '_is_new');
 
-        $variantTable = $connection->getTableName('pimgento_variant');
+        $variantTable = $resource->getTable('pimgento_variant');
 
         $columns = array_keys($connection->describeTable($tmpTable));
 
@@ -130,10 +132,11 @@ class Import extends Factory
      */
     public function updateData()
     {
-        $connection = $this->_entities->getResource()->getConnection();
+        $resource = $this->_entities->getResource();
+        $connection = $resource->getConnection();
         $tmpTable = $this->_entities->getTableName($this->getCode());
 
-        $variantTable = $connection->getTableName('pimgento_variant');
+        $variantTable = $resource->getTable('pimgento_variant');
 
         $variant = $connection->query(
             $connection->select()->from($tmpTable)
@@ -141,7 +144,7 @@ class Import extends Factory
 
         $attributes = $connection->fetchPairs(
             $connection->select()->from(
-                $connection->getTableName('eav_attribute'), array('attribute_code', 'attribute_id')
+                $resource->getTable('eav_attribute'), array('attribute_code', 'attribute_id')
             )
             ->where('entity_type_id = ?', 4)
         );

@@ -224,7 +224,8 @@ class Import extends Factory
      */
     public function createConfigurable()
     {
-        $connection = $this->_entities->getResource()->getConnection();
+        $resource = $this->_entities->getResource();
+        $connection = $resource->getConnection();
         $tmpTable = $this->_entities->getTableName($this->getCode());
 
         if ( ! $this->moduleIsEnabled('Pimgento_Variant')) {
@@ -296,6 +297,7 @@ class Import extends Factory
                             }
 
                             if ($connection->tableColumnExists($tmpTable, $column)) {
+<<<<<<< HEAD
                                 if ( ! strlen($value)) {
                                     if ($connection->tableColumnExists($connection->getTableName('pimgento_variant'), $column)) {
                                         if (strpos($column, 'configurable_') !== false) {
@@ -313,6 +315,13 @@ class Import extends Factory
                                         } else {
                                             $data[ $column ] = 'e.' . $column;
                                         }
+=======
+                                if (!strlen($value)) {
+                                    if ($connection->tableColumnExists($resource->getTable('pimgento_variant'), $column)) {
+                                        $data[$column] = 'v.' . $column;
+                                    } else {
+                                        $data[$column] = 'e.' . $column;
+>>>>>>> upstream/master
                                     }
                                 } else {
                                     $data[ $column ] = new Expr('"' . $value . '"');
@@ -337,7 +346,7 @@ class Import extends Factory
             $configurable = $connection->select()
                 ->from(array('e' => $tmpTable), $data)
                 ->joinInner(
-                    array('v' => $connection->getTableName('pimgento_variant')),
+                    array('v' => $resource->getTable('pimgento_variant')),
                     'e.groups = v.code',
                     array()
                 )
@@ -375,7 +384,8 @@ class Import extends Factory
      */
     public function updateAttributeSetId()
     {
-        $connection = $this->_entities->getResource()->getConnection();
+        $resource = $this->_entities->getResource();
+        $connection = $resource->getConnection();
         $tmpTable = $this->_entities->getTableName($this->getCode());
 
         if ( ! $connection->tableColumnExists($tmpTable, 'family')) {
@@ -387,7 +397,7 @@ class Import extends Factory
             $families = $connection->select()
                 ->from(false, array('_attribute_set_id' => 'c.entity_id'))
                 ->joinLeft(
-                    array('c' => $connection->getTableName('pimgento_entities')),
+                    array('c' => $resource->getTable('pimgento_entities')),
                     'p.family = c.code AND c.import = "family"',
                     array()
                 );
@@ -422,7 +432,8 @@ class Import extends Factory
      */
     public function updateOption()
     {
-        $connection = $this->_entities->getResource()->getConnection();
+        $resource = $this->_entities->getResource();
+        $connection = $resource->getConnection();
         $tmpTable = $this->_entities->getTableName($this->getCode());
 
         $columns = array_keys($connection->describeTable($tmpTable));
@@ -468,7 +479,7 @@ class Import extends Factory
                 // Sub select to increase performance versus FIND_IN_SET
                 $subSelect = $connection->select()
                     ->from(
-                        array('c' => $connection->getTableName('pimgento_entities')),
+                        array('c' => $resource->getTable('pimgento_entities')),
                         array('code' => 'SUBSTRING(`c`.`code`,' . $prefixL . ')', 'entity_id' => 'c.entity_id')
                     )
                     ->where("c.code like '".$columnPrefix."_%' ")
@@ -511,17 +522,18 @@ class Import extends Factory
      */
     public function createEntities()
     {
-        $connection = $this->_entities->getResource()->getConnection();
+        $resource = $this->_entities->getResource();
+        $connection = $resource->getConnection();
         $tmpTable = $this->_entities->getTableName($this->getCode());
 
-        if ($connection->isTableExists($connection->getTableName('sequence_product'))) {
+        if ($connection->isTableExists($resource->getTable('sequence_product'))) {
             $values = array(
                 'sequence_value' => '_entity_id',
             );
             $parents = $connection->select()->from($tmpTable, $values);
             $connection->query(
                 $connection->insertFromSelect(
-                    $parents, $connection->getTableName('sequence_product'), array_keys($values), 1
+                    $parents, $resource->getTable('sequence_product'), array_keys($values), 1
                 )
             );
         }
@@ -536,12 +548,12 @@ class Import extends Factory
             'updated_at'       => new Expr('now()'),
         );
 
-        $table = $connection->getTableName('catalog_product_entity');
+        $table = $resource->getTable('catalog_product_entity');
 
-        if ($this->_entities->getColumnIdentifier($table) == 'row_id') {
+        $columnIdentifier = $this->_entities->getColumnIdentifier($table);
+
+        if ($columnIdentifier == 'row_id') {
             $values['row_id'] = '_entity_id';
-            $values['created_in'] = new Expr(1);
-            $values['updated_in'] = new Expr(VersionManager::MAX_VERSION);
         }
 
         $parents = $connection->select()->from($tmpTable, $values);
@@ -556,6 +568,14 @@ class Import extends Factory
         );
 
         $connection->update($table, $values, 'created_at IS NULL');
+
+        if ($columnIdentifier == 'row_id') {
+            $values = [
+                'created_in' => new Expr(1),
+                'updated_in' => new Expr(VersionManager::MAX_VERSION),
+            ];
+            $connection->update($table, $values, 'created_in = 0 AND updated_in = 0');
+        }
     }
 
     /**
@@ -563,7 +583,8 @@ class Import extends Factory
      */
     public function setValues()
     {
-        $connection = $this->_entities->getResource()->getConnection();
+        $resource = $this->_entities->getResource();
+        $connection = $resource->getConnection();
         $tmpTable = $this->_entities->getTableName($this->getCode());
 
         $stores = array_merge(
@@ -646,7 +667,7 @@ class Import extends Factory
 
         foreach ($values as $storeId => $data) {
             $this->_entities->setValues(
-                $this->getCode(), $connection->getTableName('catalog_product_entity'), $data, 4, $storeId, 1
+                $this->getCode(), $resource->getTable('catalog_product_entity'), $data, 4, $storeId, 1
             );
         }
     }
@@ -656,7 +677,8 @@ class Import extends Factory
      */
     public function linkConfigurable()
     {
-        $connection = $this->_entities->getResource()->getConnection();
+        $resource = $this->_entities->getResource();
+        $connection = $resource->getConnection();
         $tmpTable = $this->_entities->getTableName($this->getCode());
 
         if ( ! $this->moduleIsEnabled('Pimgento_Variant')) {
@@ -705,7 +727,7 @@ class Import extends Factory
 
                     $hasOptions = $connection->fetchOne(
                         $connection->select()
-                            ->from($connection->getTableName('eav_attribute_option'), array(new Expr(1)))
+                            ->from($resource->getTable('eav_attribute_option'), array(new Expr(1)))
                             ->where('attribute_id = ?', $id)
                             ->limit(1)
                     );
@@ -721,13 +743,13 @@ class Import extends Factory
                         'position'     => $position ++,
                     );
                     $connection->insertOnDuplicate(
-                        $connection->getTableName('catalog_product_super_attribute'), $values, array()
+                        $resource->getTable('catalog_product_super_attribute'), $values, array()
                     );
 
                     /* catalog_product_super_attribute_label */
                     $superAttributeId = $connection->fetchOne(
                         $connection->select()
-                            ->from($connection->getTableName('catalog_product_super_attribute'))
+                            ->from($resource->getTable('catalog_product_super_attribute'))
                             ->where('attribute_id = ?', $id)
                             ->where('product_id = ?', $row['_entity_id'])
                             ->limit(1)
@@ -749,7 +771,7 @@ class Import extends Factory
                         $childId = $connection->fetchOne(
                             $connection->select()
                                 ->from(
-                                    $connection->getTableName('catalog_product_entity'),
+                                    $resource->getTable('catalog_product_entity'),
                                     array(
                                         'entity_id',
                                     )
@@ -776,18 +798,18 @@ class Import extends Factory
 
                     if (count($valuesSuperLink) > $stepSize) {
                         $connection->insertOnDuplicate(
-                            $connection->getTableName('catalog_product_super_attribute_label'),
+                            $resource->getTable('catalog_product_super_attribute_label'),
                             $valuesLabels,
                             array()
                         );
 
                         $connection->insertOnDuplicate(
-                            $connection->getTableName('catalog_product_relation'),
+                            $resource->getTable('catalog_product_relation'),
                             $valuesRelations,
                             array()
                         );
                         $connection->insertOnDuplicate(
-                            $connection->getTableName('catalog_product_super_link'),
+                            $resource->getTable('catalog_product_super_link'),
                             $valuesSuperLink,
                             array()
                         );
@@ -802,18 +824,18 @@ class Import extends Factory
 
             if (count($valuesSuperLink) > 0) {
                 $connection->insertOnDuplicate(
-                    $connection->getTableName('catalog_product_super_attribute_label'),
+                    $resource->getTable('catalog_product_super_attribute_label'),
                     $valuesLabels,
                     array()
                 );
 
                 $connection->insertOnDuplicate(
-                    $connection->getTableName('catalog_product_relation'),
+                    $resource->getTable('catalog_product_relation'),
                     $valuesRelations,
                     array()
                 );
                 $connection->insertOnDuplicate(
-                    $connection->getTableName('catalog_product_super_link'),
+                    $resource->getTable('catalog_product_super_link'),
                     $valuesSuperLink,
                     array()
                 );
@@ -889,7 +911,8 @@ class Import extends Factory
      */
     public function setWebsites()
     {
-        $connection = $this->_entities->getResource()->getConnection();
+        $resource = $this->_entities->getResource();
+        $connection = $resource->getConnection();
         $tmpTable = $this->_entities->getTableName($this->getCode());
 
         $websites = $this->_helperConfig->getStores('website_id');
@@ -909,7 +932,7 @@ class Import extends Factory
                 );
             $connection->query(
                 $connection->insertFromSelect(
-                    $select, $connection->getTableName('catalog_product_website'), array('product_id', 'website_id'), 1
+                    $select, $resource->getTable('catalog_product_website'), array('product_id', 'website_id'), 1
                 )
             );
         }
@@ -920,7 +943,8 @@ class Import extends Factory
      */
     public function setCategories()
     {
-        $connection = $this->_entities->getResource()->getConnection();
+        $resource = $this->_entities->getResource();
+        $connection = $resource->getConnection();
         $tmpTable = $this->_entities->getTableName($this->getCode());
 
         if ( ! $connection->tableColumnExists($tmpTable, 'categories')) {
@@ -933,7 +957,11 @@ class Import extends Factory
             $select = $connection->select()
                 ->from(
                     array(
+<<<<<<< HEAD
                         'c' => $connection->getTableName('pimgento_entities'),
+=======
+                        'c' => $resource->getTable('pimgento_entities')
+>>>>>>> upstream/master
                     ),
                     array()
                 )
@@ -946,7 +974,7 @@ class Import extends Factory
                     )
                 )
                 ->joinInner(
-                    array('e' => $connection->getTableName('catalog_category_entity')),
+                    array('e' => $resource->getTable('catalog_category_entity')),
                     'c.entity_id = e.entity_id',
                     array()
                 );
@@ -954,7 +982,7 @@ class Import extends Factory
             $connection->query(
                 $connection->insertFromSelect(
                     $select,
-                    $connection->getTableName('catalog_category_product'),
+                    $resource->getTable('catalog_category_product'),
                     array('category_id', 'product_id'),
                     1
                 )
@@ -968,7 +996,8 @@ class Import extends Factory
      */
     public function initStock()
     {
-        $connection = $this->_entities->getResource()->getConnection();
+        $resource = $this->_entities->getResource();
+        $connection = $resource->getConnection();
         $tmpTable = $this->_entities->getTableName($this->getCode());
 
         $websiteId = $this->_helperConfig->getDefaultScopeId();
@@ -988,7 +1017,7 @@ class Import extends Factory
         $connection->query(
             $connection->insertFromSelect(
                 $select,
-                $connection->getTableName('cataloginventory_stock_item'),
+                $resource->getTable('cataloginventory_stock_item'),
                 array_keys($values),
                 AdapterInterface::INSERT_IGNORE
             )
@@ -1000,7 +1029,8 @@ class Import extends Factory
      */
     public function setUrlRewrite()
     {
-        $connection = $this->_entities->getResource()->getConnection();
+        $resource = $this->_entities->getResource();
+        $connection = $resource->getConnection();
         $tmpTable = $this->_entities->getTableName($this->getCode());
 
         $stores = array_merge(
@@ -1045,7 +1075,7 @@ class Import extends Factory
 
                     $this->_entities->setValues(
                         $this->getCode(),
-                        $connection->getTableName('catalog_product_entity'),
+                        $resource->getTable('catalog_product_entity'),
                         ['url_key' => $column],
                         4,
                         $store['store_id'],

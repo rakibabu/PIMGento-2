@@ -101,12 +101,13 @@ class Related extends Factory
      */
     public function relatedImportColumn($type)
     {
-        $connection = $this->_entities->getResource()->getConnection();
+        $resource = $this->_entities->getResource();
+        $connection = $resource->getConnection();
 
         $tmpTable     = $this->_entities->getTableName($this->getCode());
         $tableNumber  = $this->_entities->getTableName('numbers');;
         $tableRelated = $this->_entities->getTableName('related');;
-        $tableProduct = $connection->getTableName('catalog_product_entity');
+        $tableProduct = $resource->getTable('catalog_product_entity');
 
         $column = $type['column'];
 
@@ -191,7 +192,7 @@ class Related extends Factory
             );
         $query = $connection->insertFromSelect(
             $select,
-            $connection->getTableName('catalog_product_link'),
+            $resource->getTable('catalog_product_link'),
             ['product_id', 'linked_product_id', 'link_type_id'],
             AdapterInterface::INSERT_ON_DUPLICATE
         );

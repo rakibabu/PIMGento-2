@@ -359,7 +359,8 @@ class Media extends Factory
      */
     public function mediaUpdateDataBase()
     {
-        $connection = $this->_entities->getResource()->getConnection();
+        $resource = $this->_entities->getResource();
+        $connection = $resource->getConnection();
         $tableMedia = $this->_entities->getTableName('media');
         $step = 5000;
 
@@ -377,19 +378,19 @@ class Media extends Factory
             ->where('t.attribute_id is not null');
 
         $identifier = $this->_entities->getColumnIdentifier(
-            $connection->getTableName('catalog_product_entity_varchar')
+            $resource->getTable('catalog_product_entity_varchar')
         );
 
         $query = $connection->insertFromSelect(
             $select,
-            $connection->getTableName('catalog_product_entity_varchar'),
+            $resource->getTable('catalog_product_entity_varchar'),
             ['attribute_id', 'store_id', $identifier, 'value'],
             AdapterInterface::INSERT_ON_DUPLICATE
         );
         $connection->query($query);
 
         // working on "media gallery"
-        $tableGallery = $connection->getTableName('catalog_product_entity_media_gallery');
+        $tableGallery = $resource->getTable('catalog_product_entity_media_gallery');
 
         // get the value id from gallery (for already existing medias)
         $maxId = $this->mediaGetMaxId($tableGallery, 'value_id');
@@ -445,7 +446,7 @@ class Media extends Factory
         }
 
         // working on "media gallery value"
-        $tableGallery = $connection->getTableName('catalog_product_entity_media_gallery_value');
+        $tableGallery = $resource->getTable('catalog_product_entity_media_gallery_value');
 
         $identifier = $this->_entities->getColumnIdentifier($tableGallery);
 
@@ -489,7 +490,7 @@ class Media extends Factory
         $connection->query($query);
 
         // working on "media gallery value to entity"
-        $tableGallery = $connection->getTableName('catalog_product_entity_media_gallery_value_to_entity');
+        $tableGallery = $resource->getTable('catalog_product_entity_media_gallery_value_to_entity');
 
         $identifier = $this->_entities->getColumnIdentifier($tableGallery);
 

@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [100.2.18] - 2017-07-31
+
+  * fix: import on table with prefix
+  * fix: table engine with big data
+
+## [100.2.17] - 2017-07-21
+
+  * fix: notice on table variable
+
+## [100.2.16] - 2017-07-20
+
+  * fix: URL rewrite with ignored URL key
+
+## [100.2.15] - 2017-07-18
+
+  * fix: incompatibility with EE staging content
+  * fix: url_key erased when category url key update is set to NO
+
 ## [100.2.14] - 2017-07-05
 
   * fix: event names

@@ -93,7 +93,8 @@ class Import extends Factory
      */
     public function insertOptions()
     {
-        $connection = $this->_entities->getResource()->getConnection();
+        $resource = $this->_entities->getResource();
+        $connection = $resource->getConnection();
         $tmpTable = $this->_entities->getTableName($this->getCode());
 
         $columns = array(
@@ -107,7 +108,7 @@ class Import extends Factory
         $options = $connection->select()
             ->from(array('a' => $tmpTable), $columns)
             ->joinInner(
-                array('b' => $connection->getTableName('pimgento_entities')),
+                array('b' => $resource->getTable('pimgento_entities')),
                 'a.attribute = b.code AND b.import = "attribute"',
                 array(
                     'attribute_id' => 'b.entity_id'
@@ -117,7 +118,7 @@ class Import extends Factory
         $connection->query(
             $connection->insertFromSelect(
                 $options,
-                $connection->getTableName('eav_attribute_option'),
+                $resource->getTable('eav_attribute_option'),
                 array('option_id', 'sort_order', 'attribute_id'),
                 1
             )
@@ -129,7 +130,8 @@ class Import extends Factory
      */
     public function insertValues()
     {
-        $connection = $this->_entities->getResource()->getConnection();
+        $resource = $this->_entities->getResource();
+        $connection = $resource->getConnection();
         $tmpTable = $this->_entities->getTableName($this->getCode());
 
         $stores = $this->_helperConfig->getStores('lang');
@@ -150,7 +152,7 @@ class Import extends Factory
                     $connection->query(
                         $connection->insertFromSelect(
                             $options,
-                            $connection->getTableName('eav_attribute_option_value'),
+                            $resource->getTable('eav_attribute_option_value'),
                             array('option_id', 'store_id', 'value'),
                             1
                         )

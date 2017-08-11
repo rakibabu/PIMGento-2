@@ -101,7 +101,8 @@ class Import extends Factory
      */
     public function insertFamily()
     {
-        $connection = $this->_entities->getResource()->getConnection();
+        $resource = $this->_entities->getResource();
+        $connection = $resource->getConnection();
         $tmpTable = $this->_entities->getTableName($this->getCode());
 
         $values = array(
@@ -115,7 +116,7 @@ class Import extends Factory
 
         $connection->query(
             $connection->insertFromSelect(
-                $families, $connection->getTableName('eav_attribute_set'), array_keys($values), 1
+                $families, $resource->getTable('eav_attribute_set'), array_keys($values), 1
             )
         );
     }
