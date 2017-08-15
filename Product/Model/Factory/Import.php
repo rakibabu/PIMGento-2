@@ -920,20 +920,19 @@ class Import extends Factory
      */
     public function setCategories()
     {
-        $connection = $this->_entities->getResource()->getConnection();
+        $resource = $this->_entities->getResource();
+        $connection = $resource->getConnection();
         $tmpTable = $this->_entities->getTableName($this->getCode());
-
-        if ( ! $connection->tableColumnExists($tmpTable, 'categories')) {
+        if (!$connection->tableColumnExists($tmpTable, 'categories')) {
             $this->setStatus(false);
             $this->setMessage(
                 __('Column categories not found')
             );
         } else {
-
             $select = $connection->select()
                 ->from(
                     array(
-                        'c' => $connection->getTableName('pimgento_entities'),
+                        'c' => $resource->getTable('pimgento_entities')
                     ),
                     array()
                 )
@@ -946,20 +945,41 @@ class Import extends Factory
                     )
                 )
                 ->joinInner(
-                    array('e' => $connection->getTableName('catalog_category_entity')),
+                    array('e' => $resource->getTable('catalog_category_entity')),
                     'c.entity_id = e.entity_id',
                     array()
                 );
-
             $connection->query(
                 $connection->insertFromSelect(
                     $select,
-                    $connection->getTableName('catalog_category_product'),
+                    $resource->getTable('catalog_category_product'),
                     array('category_id', 'product_id'),
                     1
                 )
             );
-
+            //Remove product from old categories
+            $selectToDelete = $connection->select()
+                ->from(
+                    array(
+                        'c' => $resource->getTable('pimgento_entities')
+                    ),
+                    array()
+                )
+                ->joinInner(
+                    array('p' => $tmpTable),
+                    '!FIND_IN_SET(`c`.`code`, `p`.`categories`) AND `c`.`import` = "category"',
+                    array(
+                        'category_id' => 'c.entity_id',
+                        'product_id'  => 'p._entity_id'
+                    )
+                )
+                ->joinInner(
+                    array('e' => $resource->getTable('catalog_category_entity')),
+                    'c.entity_id = e.entity_id',
+                    array()
+                );
+            $connection->delete($resource->getTable('catalog_category_product'),
+                '(category_id, product_id) IN (' . $selectToDelete->assemble() . ')');
         }
     }
 
