@@ -297,9 +297,8 @@ class Import extends Factory
                             }
 
                             if ($connection->tableColumnExists($tmpTable, $column)) {
-<<<<<<< HEAD
                                 if ( ! strlen($value)) {
-                                    if ($connection->tableColumnExists($connection->getTableName('pimgento_variant'), $column)) {
+                                    if ($connection->tableColumnExists($resource->getTable('pimgento_variant'), $column)) {
                                         if (strpos($column, 'configurable_') !== false) {
                                             unset($data[ $column ]);
                                             $data [ str_replace('configurable_', '', $column) ] = 'v.' . $column;
@@ -315,13 +314,6 @@ class Import extends Factory
                                         } else {
                                             $data[ $column ] = 'e.' . $column;
                                         }
-=======
-                                if (!strlen($value)) {
-                                    if ($connection->tableColumnExists($resource->getTable('pimgento_variant'), $column)) {
-                                        $data[$column] = 'v.' . $column;
-                                    } else {
-                                        $data[$column] = 'e.' . $column;
->>>>>>> upstream/master
                                     }
                                 } else {
                                     $data[ $column ] = new Expr('"' . $value . '"');
@@ -957,11 +949,7 @@ class Import extends Factory
             $select = $connection->select()
                 ->from(
                     array(
-<<<<<<< HEAD
-                        'c' => $connection->getTableName('pimgento_entities'),
-=======
                         'c' => $resource->getTable('pimgento_entities')
->>>>>>> upstream/master
                     ),
                     array()
                 )
