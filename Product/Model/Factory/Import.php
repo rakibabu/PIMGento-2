@@ -422,86 +422,108 @@ class Import extends Factory
      */
     public function updateOption()
     {
-        $connection = $this->_entities->getResource()->getConnection();
-        $tmpTable = $this->_entities->getTableName($this->getCode());
+        try {
+            $connection = $this->_entities->getResource()->getConnection();
+            $tmpTable = $this->_entities->getTableName($this->getCode());
 
-        $columns = array_keys($connection->describeTable($tmpTable));
+            $columns = array_keys($connection->describeTable($tmpTable));
 
-        $except = array(
-            '_entity_id',
-            '_is_new',
-            '_status',
-            '_type_id',
-            '_options_container',
-            '_tax_class_id',
-            '_attribute_set_id',
-            '_visibility',
-            '_children',
-            '_axis',
-            'sku',
-            'categories',
-            'family',
-            'groups',
-            'url_key',
-            'enabled',
-        );
-
-
-        foreach ($columns as $column) {
-
-            if (in_array($column, $except)) {
-                continue;
-            }
-
-            if (preg_match('/-unit/', $column)) {
-                continue;
-            }
+            $except = array(
+                '_entity_id',
+                '_is_new',
+                '_status',
+                '_type_id',
+                '_options_container',
+                '_tax_class_id',
+                '_attribute_set_id',
+                '_visibility',
+                '_children',
+                '_axis',
+                'sku',
+                'categories',
+                'family',
+                'groups',
+                'url_key',
+                'enabled',
+            );
 
 
-            $columnPrefix = explode('-', $column);
-            $columnPrefix = reset($columnPrefix);
+            foreach ($columns as $column) {
 
-            if ($connection->tableColumnExists($tmpTable, $column)) {
-                //get number of chars to remove from code in order to use the substring.
-                $prefixL = strlen($columnPrefix . '_') + 1;
-
-                // Sub select to increase performance versus FIND_IN_SET
-                $subSelect = $connection->select()
-                    ->from(
-                        array('c' => $connection->getTableName('pimgento_entities')),
-                        array('code' => 'SUBSTRING(`c`.`code`,' . $prefixL . ')', 'entity_id' => 'c.entity_id')
-                    )
-                    ->where("c.code like '".$columnPrefix."_%' ")
-                    ->where("c.import = ?", 'option');
-
-                // if no option no need to continue process
-                if ( ! $connection->query($subSelect)->rowCount()) {
+                if (in_array($column, $except)) {
                     continue;
                 }
-                //in case of multiselect
-                $conditionJoin = "IF ( locate(',', `".$column."`) > 0 , ". "`p`.`".$column."` like ".
-                    new Expr("CONCAT('%', `c1`.`code`, '%')") .", `p`.`".$column."` = `c1`.`code` )";
 
-                $select = $connection->select()
-                    ->from(
-                        array('p' => $tmpTable),
-                        array(
-                            'sku'       => 'p.sku',
-                            'entity_id' => 'p._entity_id',
-                        )
-                    )
-                    ->joinInner(
-                        array('c1' => new Expr('(' . (string) $subSelect . ')')),
-                        new Expr($conditionJoin),
-                        array(
-                            $column => new Expr('GROUP_CONCAT(`c1`.`entity_id` SEPARATOR ",")'),
-                        )
-                    )
-                    ->group('p.sku');
+                if (preg_match('/-unit/', $column)) {
+                    continue;
+                }
 
-                $connection->query(
-                    $connection->insertFromSelect($select, $tmpTable, array('sku', '_entity_id', $column), 1)
-                );
+
+                $columnPrefix = explode('-', $column);
+                $columnPrefix = reset($columnPrefix);
+
+                if ($connection->tableColumnExists($tmpTable, $column)) {
+                    //get number of chars to remove from code in order to use the substring.
+                    $prefixL = strlen($columnPrefix . '_') + 1;
+
+                    // Sub select to increase performance versus FIND_IN_SET
+                    $subSelect = $connection->select()
+                        ->from(
+                            array('c' => $connection->getTableName('pimgento_entities')),
+                            array('code' => 'SUBSTRING(`c`.`code`,' . $prefixL . ')', 'entity_id' => 'c.entity_id')
+                        )
+                        ->where("c.code like '" . $columnPrefix . "_%' ")
+                        ->where("c.import = ?", 'option');
+
+                    // if no option no need to continue process
+                    if ( ! $connection->query($subSelect)->rowCount()) {
+                        continue;
+                    }
+                    //in case of multiselect
+                    $conditionJoin = "IF ( locate(',', `" . $column . "`) > 0 , " . "`p`.`" . $column . "` like " .
+                        new Expr("CONCAT('%', `c1`.`code`, '%')") . ", `p`.`" . $column . "` = `c1`.`code` )";
+
+                    try {
+                        $select = $connection->select()
+                            ->from(
+                                array('p' => $tmpTable),
+                                array(
+                                    'sku'       => 'p.sku',
+                                    'entity_id' => 'p._entity_id',
+                                )
+                            )
+                            ->joinInner(
+                                array('c1' => new Expr('(' . (string) $subSelect . ')')),
+                                new Expr($conditionJoin),
+                                array(
+                                    $column => new Expr('GROUP_CONCAT(`c1`.`entity_id` SEPARATOR ",")'),
+                                )
+                            )
+                            ->group('p.sku');
+
+                        $connection->query(
+                            $connection->insertFromSelect($select, $tmpTable, array('sku', '_entity_id', $column), 1)
+                        );
+                    } catch (\Exception $e) {
+                        // skip import and reconnect
+                        // close connection to commit transaction
+                        $connection->closeConnection();
+                        $connection = $this->_entities->getResource()->getConnection();
+                    }
+                }
+                // close connection to commit transaction
+                $connection->closeConnection();
+                $connection = $this->_entities->getResource()->getConnection();
+            }
+        } catch (\Exception $e) {
+            var_dump($e->getMessage());
+            var_dump($e->getTraceAsString());
+
+            try {
+                // reconnect
+                $connection = $this->_entities->getResource()->getConnection();
+            } catch (\Exception $e) {
+                die('Something is terribly wrong');
             }
         }
     }
