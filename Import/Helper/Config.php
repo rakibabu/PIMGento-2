@@ -2,6 +2,7 @@
 
 namespace Pimgento\Import\Helper;
 
+use \Magento\Directory\Helper\Data;
 use \Magento\Framework\App\Filesystem\DirectoryList;
 use \Magento\Framework\App\Helper\AbstractHelper;
 use \Magento\Framework\App\Helper\Context;
@@ -188,5 +189,13 @@ class Config extends AbstractHelper
     public function getDefaultScopeId()
     {
         return $this->catalogInventoryConfiguration->getDefaultScopeId();
+    }
+
+    public function getDefaultLocale()
+    {
+        return $this->scopeConfig->getValue(
+            Data::XML_PATH_DEFAULT_LOCALE,
+            ScopeInterface::SCOPE_STORE
+        );
     }
 }

@@ -99,7 +99,7 @@ class Import extends Factory
             $this->setStatus(false);
             $this->setMessage($this->getFileNotFoundErrorMessage());
         } else {
-            $this->_entities->createTmpTableFromFile($file, $this->getCode(), array('type', 'code', 'families'));
+            $this->_entities->createTmpTableFromFile($file, $this->getCode(), array('type', 'code'));
         }
     }
 
@@ -122,7 +122,8 @@ class Import extends Factory
      */
     public function matchEntity()
     {
-        $connection = $this->_entities->getResource()->getConnection();
+        $resource = $this->_entities->getResource();
+        $connection = $resource->getConnection();
 
         $select = $connection->select()
             ->from(
@@ -137,7 +138,7 @@ class Import extends Factory
 
         $connection->query(
             $connection->insertFromSelect(
-                $select,  $connection->getTableName('pimgento_entities'), array('import', 'code', 'entity_id'), 2
+                $select,  $resource->getTable('pimgento_entities'), array('import', 'code', 'entity_id'), 2
             )
         );
 
@@ -180,38 +181,33 @@ class Import extends Factory
      */
     public function matchFamily()
     {
-        $connection = $this->_entities->getResource()->getConnection();
+        $resource = $this->_entities->getResource();
+        $connection = $resource->getConnection();
         $tmpTable = $this->_entities->getTableName($this->getCode());
+        $familyAttributeRelationsTable = 'pimgento_family_attribute_relations';
 
         $connection->addColumn($tmpTable, '_attribute_set_id', 'VARCHAR(255) NULL');
 
-        $import = $connection->select()->from($tmpTable, array('_entity_id', 'families'));
-        $query  = $connection->query($import);
+        $importTmpTable = $connection->select()->from($tmpTable, array('code', '_entity_id'));
+        $queryTmpTable = $connection->query($importTmpTable);
 
-        $familyCodes = $connection->fetchPairs(
-            $connection->select()
-                ->from($connection->getTableName('pimgento_entities'), array('code', 'entity_id'))
-                ->where('import = ?', 'family')
-        );
+        while ($row = $queryTmpTable->fetch()) {
+            $attributeCode = $row['code'];
 
-        while (($row = $query->fetch())) {
-            $families = explode(',', $row['families']);
-
-            $ids = array();
-
-            foreach ($families as $familyCode) {
-                if (isset($familyCodes[$familyCode])) {
-                    $ids[] = $familyCodes[$familyCode];
-                }
-            }
-
-            if (count($ids)) {
-                $connection->update(
-                    $tmpTable,
-                    array('_attribute_set_id' => join(',', $ids)),
-                    array('_entity_id = ?' => $row['_entity_id'])
+            $importRelations = $connection
+                ->select()
+                ->from($familyAttributeRelationsTable, 'family_entity_id')
+                ->where($connection
+                    ->prepareSqlCondition('attribute_code', ['like' => $attributeCode])
                 );
+            $queryRelations = $connection->query($importRelations);
+
+            $attributeIds = '';
+            while ($innerRow = $queryRelations->fetch()) {
+                $attributeIds .= $innerRow['family_entity_id'] . ',';
             }
+
+            $connection->update($tmpTable, array('_attribute_set_id' => $attributeIds), '_entity_id=' . $row['_entity_id']);
         }
     }
 
@@ -221,7 +217,8 @@ class Import extends Factory
     public function addAttributes()
     {
         $columns = $this->_helperType->getSpecificColumns();
-        $connection = $this->_entities->getResource()->getConnection();
+        $resource = $this->_entities->getResource();
+        $connection = $resource->getConnection();
         $tmpTable = $this->_entities->getTableName($this->getCode());
 
         $import = $connection->select()->from($tmpTable);
@@ -236,14 +233,14 @@ class Import extends Factory
                 'attribute_code' => $row['code'],
             );
             $connection->insertOnDuplicate(
-                $connection->getTableName('eav_attribute'), $values, array_keys($values)
+                $resource->getTable('eav_attribute'), $values, array_keys($values)
             );
 
             $values = array(
                 'attribute_id' => $row['_entity_id'],
             );
             $connection->insertOnDuplicate(
-                $connection->getTableName('catalog_eav_attribute'), $values, array_keys($values)
+                $resource->getTable('catalog_eav_attribute'), $values, array_keys($values)
             );
 
             /* Retrieve default admin label */
@@ -361,7 +358,7 @@ class Import extends Factory
 
                         $exists = $connection->fetchOne(
                             $connection->select()
-                                ->from($connection->getTableName('eav_attribute_label'))
+                                ->from($resource->getTable('eav_attribute_label'))
                                 ->where('attribute_id = ?', $row['_entity_id'])
                                 ->where('store_id = ?', $store['store_id'])
                         );
@@ -374,14 +371,14 @@ class Import extends Factory
                                 'attribute_id = ?' => $row['_entity_id'],
                                 'store_id = ?' => $store['store_id']
                             );
-                            $connection->update($connection->getTableName('eav_attribute_label'), $values, $where);
+                            $connection->update($resource->getTable('eav_attribute_label'), $values, $where);
                         } else {
                             $values = array(
                                 'attribute_id' => $row['_entity_id'],
                                 'store_id' => $store['store_id'],
                                 'value' => $row['label-' . $lang]
                             );
-                            $connection->insert($connection->getTableName('eav_attribute_label'), $values);
+                            $connection->insert($resource->getTable('eav_attribute_label'), $values);
                         }
                     }
                 }

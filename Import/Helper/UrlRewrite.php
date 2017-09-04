@@ -37,8 +37,9 @@ class UrlRewrite extends AbstractHelper
      */
     public function createUrlTmpTable()
     {
-        $connection   = $this->_entities->getResource()->getConnection();
-        $tableRewrite = $connection->getTableName('tmp_pimgento_rewrite');
+        $resource = $this->_entities->getResource();
+        $connection = $resource->getConnection();
+        $tableRewrite = $resource->getTable('tmp_pimgento_rewrite');
 
         $this->dropUrlRewriteTmpTable();
 
@@ -68,8 +69,9 @@ class UrlRewrite extends AbstractHelper
      */
     public function dropUrlRewriteTmpTable()
     {
-        $connection   = $this->_entities->getResource()->getConnection();
-        $tableRewrite = $connection->getTableName('tmp_pimgento_rewrite');
+        $resource = $this->_entities->getResource();
+        $connection = $resource->getConnection();
+        $tableRewrite = $resource->getTable('tmp_pimgento_rewrite');
 
         $connection->dropTable($tableRewrite);
     }
@@ -86,10 +88,11 @@ class UrlRewrite extends AbstractHelper
      */
     public function rewriteUrls($code, $storeId, $column, $urlSuffix)
     {
-        $connection         = $this->_entities->getResource()->getConnection();
+        $resource = $this->_entities->getResource();
+        $connection = $resource->getConnection();
         $tmpTable           = $this->_entities->getTableName($code);
-        $tmpUrlRewriteTable = $connection->getTableName('tmp_pimgento_rewrite');
-        $urlRewriteTable    = $connection->getTableName('url_rewrite');
+        $tmpUrlRewriteTable = $resource->getTable('tmp_pimgento_rewrite');
+        $urlRewriteTable    = $resource->getTable('url_rewrite');
         $targetPathExpr     = new Expr('CONCAT("catalog/' . $code . '/view/id/", `_entity_id`)');
 
         // Fill temporary url table
@@ -117,7 +120,8 @@ class UrlRewrite extends AbstractHelper
                 AND u.store_id = ' . $storeId,
                 array()
             )
-            ->where('`t`.`' . $column . '` <> ""');
+            ->where('`t`.`' . $column . '` <> ""')
+            ->where('`t`.`' . $column . '` NOT LIKE "%' . \Pimgento\Entities\Model\ResourceModel\Entities::IGNORE_VALUE . '%"');
 
         $connection->query(
             $query = $connection->insertFromSelect(
@@ -167,9 +171,10 @@ class UrlRewrite extends AbstractHelper
      */
     protected function _cleanSystemUrlsBeforeInsertion($storeId)
     {
-        $connection         = $this->_entities->getResource()->getConnection();
-        $tmpUrlRewriteTable = $connection->getTableName('tmp_pimgento_rewrite');
-        $urlRewriteTable    = $connection->getTableName('url_rewrite');
+        $resource = $this->_entities->getResource();
+        $connection = $resource->getConnection();
+        $tmpUrlRewriteTable = $resource->getTable('tmp_pimgento_rewrite');
+        $urlRewriteTable    = $resource->getTable('url_rewrite');
 
         $select = $connection->select()
             ->from(
@@ -221,8 +226,9 @@ class UrlRewrite extends AbstractHelper
      */
     protected function _insertInUrlRewriteTable($select, $columns, $insertionType)
     {
-        $connection      = $this->_entities->getResource()->getConnection();
-        $urlRewriteTable = $connection->getTableName('url_rewrite');
+        $resource = $this->_entities->getResource();
+        $connection = $resource->getConnection();
+        $urlRewriteTable = $resource->getTable('url_rewrite');
 
         $connection->query(
             $connection->insertFromSelect(
