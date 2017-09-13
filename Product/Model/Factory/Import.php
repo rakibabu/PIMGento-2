@@ -298,7 +298,7 @@ class Import extends Factory
 
                             if ($connection->tableColumnExists($tmpTable, $column)) {
                                 if ( ! strlen($value)) {
-                                    if ($connection->tableColumnExists($resource->getTableName('pimgento_variant'), $column)) {
+                                    if ($connection->tableColumnExists($resource->getTable('pimgento_variant'), $column)) {
                                         if (strpos($column, 'configurable_') !== false) {
                                             unset($data[ $column ]);
                                             $data [ str_replace('configurable_', '', $column) ] = 'v.' . $column;
@@ -318,7 +318,7 @@ class Import extends Factory
                                 } else {
                                     $data[ $column ] = new Expr('"' . $value . '"');
                                 }
-                            } elseif ($connection->tableColumnExists($connection->getTableName('pimgento_variant'), $column)) {
+                            } elseif ($connection->tableColumnExists($resource->getTable('pimgento_variant'), $column)) {
                                 if ( ! strlen($value)) {
                                     //set variant group label as product configurable name
                                     foreach (array_keys($this->getStores()) as $store) {
