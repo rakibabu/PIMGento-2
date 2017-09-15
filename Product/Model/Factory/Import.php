@@ -244,7 +244,7 @@ class Import extends Factory
 
             $data = array(
                 'sku' => 'e.groups',
-                'url_key' => 'e.groups',
+                'url_key' => 'v.url_key-nl_NL-ecommerce',
                 '_children'          => new Expr('GROUP_CONCAT(e.sku SEPARATOR ",")'),
                 '_type_id'           => new Expr('"configurable"'),
                 '_options_container' => new Expr('"container1"'),
@@ -302,7 +302,7 @@ class Import extends Factory
                                         if (strpos($column, 'configurable_') !== false) {
                                             unset($data[ $column ]);
                                             $data [ str_replace('configurable_', '', $column) ] = 'v.' . $column;
-                                        } elseif (strpos($column, 'url_key') !== false) {
+                                        } elseif (strpos($column, 'url_key-nl_NL') !== false) {
                                             $data ['url_key'] = 'v.' . $column;
                                         } else {
                                             $data[ $column ] = 'v.' . $column;
