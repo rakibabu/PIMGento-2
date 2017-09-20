@@ -992,8 +992,6 @@ class Import extends Factory
                 )
             );
 
-            // some extra log functionality to see which categories are deleted
-
             //Remove product from old categories
             $selectToDelete = $connection->select()
                 ->from(
@@ -1236,29 +1234,38 @@ class Import extends Factory
      */
     public function importMedia()
     {
-        $this->_media->setCode($this->getCode());
+        $enabled = $this->_scopeConfig->getValue('pimgento/image/enabled');
 
-        $this->_mediaHelper->initHelper(dirname($this->getFileFullPath()));
+        if (!$enabled) {
+            $this->setMessage(
+                __('Media importation is disabled (Stores > Configuration > Catalog > Pimgento > Image)')
+            );
+        } else {
+            $this->_media->setCode($this->getCode());
 
-        $connection = $this->_entities->getResource()->getConnection();
-        $tmpTable = $this->_entities->getTableName($this->getCode());
+            $this->_mediaHelper->initHelper(dirname($this->getFileFullPath()));
 
-        $tableColumns = array_keys($connection->describeTable($tmpTable));
-        $fields = $this->_mediaHelper->getFields();
 
-        $this->_media->mediaCreateTmpTables();
-        foreach ($fields as $field) {
-            foreach ($field['columns'] as $position => $column) {
-                if (in_array($column, $tableColumns)) {
-                    $this->_media->mediaPrepareValues($column, $field['attribute_id'], $position);
+            $connection = $this->_entities->getResource()->getConnection();
+            $tmpTable = $this->_entities->getTableName($this->getCode());
+
+            $tableColumns = array_keys($connection->describeTable($tmpTable));
+            $fields       = $this->_mediaHelper->getFields();
+
+            $this->_media->mediaCreateTmpTables();
+            foreach ($fields as $field) {
+                foreach ($field['columns'] as $position => $column) {
+                    if (in_array($column, $tableColumns)) {
+                        $this->_media->mediaPrepareValues($column, $field['attribute_id'], $position);
+                    }
                 }
             }
-        }
 
-        $this->_media->mediaCleanValues();
-        $this->_media->mediaRemoveUnknownFiles();
-        $this->_media->mediaCopyFiles();
-        $this->_media->mediaUpdateDataBase();
-        $this->_media->mediaDropTmpTables();
+            $this->_media->mediaCleanValues();
+            $this->_media->mediaRemoveUnknownFiles();
+            $this->_media->mediaCopyFiles();
+            $this->_media->mediaUpdateDataBase();
+            $this->_media->mediaDropTmpTables();
+        }
     }
 }

@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [100.2.20] - 2017-09-05
+
+  * update: disabled media importation if needed
+
+## [100.2.19] - 2017-08-30
+
+  * update: EnhancedConnectorBundle requirement is now useless
+  * fix: remove product from old categories
+
 ## [100.2.18] - 2017-07-31
 
   * fix: import on table with prefix

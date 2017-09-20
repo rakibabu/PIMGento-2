@@ -22,7 +22,6 @@ With PIMGento, you can import :
 ## Requirements
 
 * Akeneo PIM >= 1.3 (CE & EE)
-* Akeneo Bundle [EnhancedConnectorBundle](https://github.com/akeneo-labs/EnhancedConnectorBundle/)
 * Magento >= 2.0 CE & EE
 * Set local_infile mysql variable to TRUE
 * Database encoding must be UTF-8
@@ -46,9 +45,6 @@ With PIMGento, you can import :
     ),
   ),
 ```
-
-You need to install this Akeneo Bundle (https://github.com/akeneo-labs/EnhancedConnectorBundle/)
-in order to generate appropriate CSV files for Magento.
 
 ### Installation ###
 
