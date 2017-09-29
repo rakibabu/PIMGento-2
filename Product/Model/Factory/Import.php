@@ -424,105 +424,87 @@ class Import extends Factory
      */
     public function updateOption()
     {
-        try {
-            $resource = $this->_entities->getResource();
-            $connection = $this->_entities->getResource()->getConnection();
-            $tmpTable = $this->_entities->getTableName($this->getCode());
-
-            $columns = array_keys($connection->describeTable($tmpTable));
-
-            $except = array(
-                '_entity_id',
-                '_is_new',
-                '_status',
-                '_type_id',
-                '_options_container',
-                '_tax_class_id',
-                '_attribute_set_id',
-                '_visibility',
-                '_children',
-                '_axis',
-                'sku',
-                'categories',
-                'family',
-                'groups',
-                'url_key',
-                'enabled',
-            );
-
-            foreach ($columns as $column) {
-
-                if (in_array($column, $except)) {
+        $resource = $this->_entities->getResource();
+        $connection = $resource->getConnection();
+        $tmpTable = $this->_entities->getTableName($this->getCode());
+        $columns = array_keys($connection->describeTable($tmpTable));
+        $except = array(
+            '_entity_id',
+            '_is_new',
+            '_status',
+            '_type_id',
+            '_options_container',
+            '_tax_class_id',
+            '_attribute_set_id',
+            '_visibility',
+            '_children',
+            '_axis',
+            'sku',
+            'categories',
+            'family',
+            'groups',
+            'url_key',
+            'enabled',
+        );
+        foreach ($columns as $column) {
+            if (in_array($column, $except)) {
+                continue;
+            }
+            if (preg_match('/-unit/', $column)) {
+                continue;
+            }
+            $columnPrefix = explode('-', $column);
+            $columnPrefix = reset($columnPrefix);
+            if ($connection->tableColumnExists($tmpTable, $column)) {
+                //get number of chars to remove from code in order to use the substring.
+                $prefixL = strlen($columnPrefix . '_') + 1;
+                // Sub select to increase performance versus FIND_IN_SET
+                $subSelect = $connection->select()
+                    ->from(
+                        array('c' => $resource->getTable('pimgento_entities')),
+                        array('code' => 'SUBSTRING(`c`.`code`,' . $prefixL . ')', 'entity_id' => 'c.entity_id')
+                    )
+                    ->where("c.code like '".$columnPrefix."_%' ")
+                    ->where("c.import = ?", 'option');
+                // if no option no need to continue process
+                if (!$connection->query($subSelect)->rowCount()) {
                     continue;
                 }
+                //in case of multiselect
+                $conditionJoin = "IF ( locate(',', `".$column."`) > 0 , ". "`p`.`".$column."` like ".
+                    new Expr("CONCAT('%', `c1`.`code`, '%')") .", `p`.`".$column."` = `c1`.`code` )";
 
-                if (preg_match('/-unit/', $column)) {
-                    continue;
-                }
+                try {
 
-                $columnPrefix = explode('-', $column);
-                $columnPrefix = reset($columnPrefix);
-
-                if ($connection->tableColumnExists($tmpTable, $column)) {
-                    //get number of chars to remove from code in order to use the substring.
-                    $prefixL = strlen($columnPrefix . '_') + 1;
-                    // Sub select to increase performance versus FIND_IN_SET
-                    $subSelect = $connection->select()
+                    $select = $connection->select()
                         ->from(
-                            array('c' => $resource->getTable('pimgento_entities')),
-                            array('code' => 'SUBSTRING(`c`.`code`,' . $prefixL . ')', 'entity_id' => 'c.entity_id')
+                            array('p' => $tmpTable),
+                            array(
+                                'sku'       => 'p.sku',
+                                'entity_id' => 'p._entity_id'
+                            )
                         )
-                        ->where("c.code like '".$columnPrefix."_%' ")
-                        ->where("c.import = ?", 'option');
-                    // if no option no need to continue process
-                    if (!$connection->query($subSelect)->rowCount()) {
-                        continue;
-                    }
-                    //in case of multiselect
-                    $conditionJoin = "IF ( locate(',', `".$column."`) > 0 , ". "`p`.`".$column."` like ".
-                        new Expr("CONCAT('%', `c1`.`code`, '%')") .", `p`.`".$column."` = `c1`.`code` )";
-
-                    try {
-                        $select = $connection->select()
-                            ->from(
-                                array('p' => $tmpTable),
-                                array(
-                                    'sku'       => 'p.sku',
-                                    'entity_id' => 'p._entity_id'
-                                )
+                        ->joinInner(
+                            array('c1' => new Expr('('.(string) $subSelect.')')),
+                            new Expr($conditionJoin),
+                            array(
+                                $column => new Expr('GROUP_CONCAT(`c1`.`entity_id` SEPARATOR ",")')
                             )
-                            ->joinInner(
-                                array('c1' => new Expr('('.(string) $subSelect.')')),
-                                new Expr($conditionJoin),
-                                array(
-                                    $column => new Expr('GROUP_CONCAT(`c1`.`entity_id` SEPARATOR ",")')
-                                )
-                            )
-                            ->group('p.sku');
-                        $connection->query(
-                            $connection->insertFromSelect($select, $tmpTable, array('sku', '_entity_id', $column), 1)
-                        );
-                    } catch (\Exception $e) {
-                        // skip import and reconnect
-                        // close connection to commit transaction
-                        $connection->closeConnection();
-                        $connection = $this->_entities->getResource()->getConnection();
-                    }
+                        )
+                        ->group('p.sku');
+                    $connection->query(
+                        $connection->insertFromSelect($select, $tmpTable, array('sku', '_entity_id', $column), 1)
+                    );
+                } catch (\Exception $e) {
+                    // skip import and reconnect
+                    // close connection to commit transaction
+                    $connection->closeConnection();
+                    $connection = $this->_entities->getResource()->getConnection();
                 }
-                // close connection to commit transaction
-                $connection->closeConnection();
-                $connection = $this->_entities->getResource()->getConnection();
             }
-        } catch (\Exception $e) {
-            var_dump($e->getMessage());
-            var_dump($e->getTraceAsString());
-
-            try {
-                // reconnect
-                $connection = $this->_entities->getResource()->getConnection();
-            } catch (\Exception $e) {
-                die('Something is terribly wrong');
-            }
+            // close connection to commit transaction
+            $connection->closeConnection();
+            $connection = $this->_entities->getResource()->getConnection();
         }
     }
 
@@ -1005,57 +987,64 @@ class Import extends Factory
 
         $this->_urlRewriteHelper->createUrlTmpTable();
 
+        $columns = [];
+
         foreach ($stores as $local => $affected) {
-
-            $column = 'url_key';
-
             if ($connection->tableColumnExists($tmpTable, 'url_key-' . $local)) {
-                $column = 'url_key-' . $local;
-            }
-
-            if ($connection->tableColumnExists($tmpTable, $column)) {
-
-                $duplicates = $connection->fetchCol(
-                    $connection->select()
-                        ->from($tmpTable, [$column])
-                        ->group($column)
-                        ->having('COUNT(*) > 1')
-                );
-
-                foreach ($duplicates as $urlKey) {
-                    if ($urlKey) {
-                        $connection->update(
-                            $tmpTable,
-                            [$column => new Expr('CONCAT(`' . $column . '`, "-", `sku`)')],
-                            ['`' . $column . '` = ?' => $urlKey]
-                        );
-                    }
-                }
-
                 foreach ($affected as $store) {
-
-                    if ($store['store_id'] == 0) {
-                        continue;
-                    }
-
-                    $this->_entities->setValues(
-                        $this->getCode(),
-                        $resource->getTable('catalog_product_entity'),
-                        ['url_key' => $column],
-                        4,
-                        $store['store_id'],
-                        1
-                    );
-
-                    $this->_urlRewriteHelper->rewriteUrls(
-                        $this->getCode(),
-                        $store['store_id'],
-                        $column,
-                        $this->_scopeConfig->getValue('catalog/seo/product_url_suffix')
-                    );
+                    $columns[$store['store_id']] = 'url_key-' . $local;
                 }
             }
         }
+
+        if (!count($columns)) {
+            foreach ($stores as $local => $affected) {
+                foreach ($affected as $store) {
+                    $columns[$store['store_id']] = 'url_key';
+                }
+            }
+        }
+
+        foreach ($columns as $store => $column) {
+            if ($store == 0) {
+                continue;
+            }
+
+            $duplicates = $connection->fetchCol(
+                $connection->select()
+                    ->from($tmpTable, [$column])
+                    ->group($column)
+                    ->having('COUNT(*) > 1')
+            );
+
+            foreach ($duplicates as $urlKey) {
+                if ($urlKey) {
+                    $connection->update(
+                        $tmpTable,
+                        [$column => new Expr('CONCAT(`' . $column . '`, "-", `sku`)')],
+                        ['`' . $column . '` = ?' => $urlKey]
+                    );
+                }
+            }
+
+            $this->_entities->setValues(
+                $this->getCode(),
+                $resource->getTable('catalog_product_entity'),
+                ['url_key' => $column],
+                4,
+                $store,
+                1
+            );
+
+            $this->_urlRewriteHelper->rewriteUrls(
+                $this->getCode(),
+                $store,
+                $column,
+                $this->_scopeConfig->getValue('catalog/seo/product_url_suffix')
+            );
+
+        }
+
 
         $this->_urlRewriteHelper->dropUrlRewriteTmpTable();
     }
