@@ -852,69 +852,6 @@ class Import extends Factory
         }
     }
 
-
-    /**
-     * Link configurable with children
-     */
-    public function setUrlKey()
-    {
-        $connection = $this->_entities->getResource()->getConnection();
-        $tmpTable = $this->_entities->getTableName($this->getCode());
-
-        if ( ! $this->moduleIsEnabled('Pimgento_Variant')) {
-            $this->setStatus(false);
-            $this->setMessage(
-                __('Module Pimgento_Variant is not enabled')
-            );
-        } else if ( ! $connection->tableColumnExists($tmpTable, 'groups')) {
-            $this->setStatus(false);
-            $this->setMessage(
-                __('Column groups not found')
-            );
-        } else {
-            $storeCodes = array_keys($this->getStores());
-
-            foreach ($storeCodes as $storeCode) {
-                if ($connection->tableColumnExists($tmpTable, 'url_key-' . $storeCode)) {
-
-                    $query = $connection->query(
-                        $connection->select()
-                            ->from(
-                                $tmpTable,
-                                array(
-                                    'url_key-' . $storeCode,
-                                    'sku',
-                                    'groups',
-                                )
-                            )
-                            ->where('_type_id = ?', 'simple')
-                    );
-
-                    while (($row = $query->fetch())) {
-
-                        $values = array(
-                            'url_key'               => strtolower(str_replace('.', '-', $row['sku'])),
-                            'url_key-' . $storeCode => strtolower(str_replace('.', '-', $row['sku'])),
-                        );
-
-                        if (empty($row['groups'])) {
-                            $values = array(
-                                'url_key'               => strtolower($row[ 'url_key-' . $storeCode ]),
-                                'url_key-' . $storeCode => strtolower($row[ 'url_key-' . $storeCode ]),
-                            );
-                        }
-
-                        $connection->update(
-                            $connection->getTableName($tmpTable),
-                            $values,
-                            'sku = "' . $row['sku'] . '"'
-                        );
-                    }
-                }
-            }
-        }
-    }
-
     /**
      * Set website
      */
