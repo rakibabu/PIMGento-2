@@ -446,26 +446,33 @@ class Import extends Factory
                 $conditionJoin = "IF ( locate(',', `".$column."`) > 0 , ". "`p`.`".$column."` like ".
                     new Expr("CONCAT('%', `c1`.`code`, '%')") .", `p`.`".$column."` = `c1`.`code` )";
 
-                $select = $connection->select()
-                    ->from(
-                        array('p' => $tmpTable),
-                        array(
-                            'sku'       => 'p.sku',
-                            'entity_id' => 'p._entity_id'
+                try {
+                    $select = $connection->select()
+                        ->from(
+                            array('p' => $tmpTable),
+                            array(
+                                'sku'       => 'p.sku',
+                                'entity_id' => 'p._entity_id'
+                            )
                         )
-                    )
-                    ->joinInner(
-                        array('c1' => new Expr('('.(string) $subSelect.')')),
-                        new Expr($conditionJoin),
-                        array(
-                            $column => new Expr('GROUP_CONCAT(`c1`.`entity_id` SEPARATOR ",")')
+                        ->joinInner(
+                            array('c1' => new Expr('('.(string) $subSelect.')')),
+                            new Expr($conditionJoin),
+                            array(
+                                $column => new Expr('GROUP_CONCAT(`c1`.`entity_id` SEPARATOR ",")')
+                            )
                         )
-                    )
-                    ->group('p.sku');
+                        ->group('p.sku');
 
-                $connection->query(
-                    $connection->insertFromSelect($select, $tmpTable, array('sku', '_entity_id', $column), 1)
-                );
+                    $connection->query(
+                        $connection->insertFromSelect($select, $tmpTable, array('sku', '_entity_id', $column), 1)
+                    );
+                } catch (\Exception $e) {
+                    // skip import and reconnect
+                    // close connection to commit transaction
+                    $connection->closeConnection();
+                    $connection = $resource->getConnection();
+                }
             }
         }
     }
