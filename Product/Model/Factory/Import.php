@@ -484,6 +484,9 @@ class Import extends Factory
                     $connection = $resource->getConnection();
                 }
             }
+
+            $connection->closeConnection();
+            $connection = $resource->getConnection();
         }
     }
 
