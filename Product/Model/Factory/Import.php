@@ -169,7 +169,7 @@ class Import extends Factory
 
         if (!$connection->tableColumnExists($tmpTable, 'url_key')) {
             $connection->addColumn($tmpTable, 'url_key', 'varchar(255) NOT NULL DEFAULT ""');
-            $connection->update($tmpTable, array('url_key' => new Expr('LOWER(`sku`)')));
+            $connection->update($tmpTable, array('url_key' => new Expr('REPLACE(LOWER(`sku`), \'.\', \'-\')')));
         }
 
         if ($connection->tableColumnExists($tmpTable, 'enabled')) {
