@@ -296,9 +296,19 @@ class Import extends Factory
                             if ($connection->tableColumnExists($tmpTable, $column)) {
                                 if (!strlen($value)) {
                                     if ($connection->tableColumnExists($resource->getTable('pimgento_variant'), $column)) {
-                                        $data[$column] = 'v.' . $column;
-                                    } else {
-                                        $data[$column] = 'e.' . $column;
+                                        if (strpos($column, 'configurable_') !== false) {
+                                            unset($data[ $column ]);
+                                            $data [ str_replace('configurable_', '', $column) ] = 'v.' . $column;
+                                        } else {
+                                            $data[$column] = 'v.' . $column;
+                                        }
+                                    } elseif ( ! isset($data[ $column ])) {
+                                        if (strpos($column, 'configurable_') !== false) {
+                                            unset($data[ $column ]);
+                                            $data [ str_replace('configurable_', '', $column) ] = 'e.' . $column;
+                                        } else {
+                                            $data[$column] = 'e.' . $column;
+                                        }
                                     }
                                 } else {
                                     $data[$column] = new Expr('"' . $value . '"');
