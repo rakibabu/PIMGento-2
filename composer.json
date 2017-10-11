@@ -10,7 +10,7 @@
     "magento/module-store": "*"
   },
   "type": "magento2-module",
-  "version": "100.2.22.3",
+  "version": "100.2.22.4",
   "license": [
     "OSL-3.0",
     "AFL-3.0"
