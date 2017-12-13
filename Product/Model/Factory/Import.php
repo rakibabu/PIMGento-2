@@ -549,6 +549,9 @@ class Import extends Factory
                     $connection->insertFromSelect($select, $tmpTable, array('sku', '_entity_id', $column), AdapterInterface::INSERT_ON_DUPLICATE)
                 );
             }
+
+            $connection->closeConnection();
+            $connection = $resource->getConnection();
         }
     }
 
