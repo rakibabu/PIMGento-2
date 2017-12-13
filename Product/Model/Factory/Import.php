@@ -324,12 +324,33 @@ class Import extends Factory
                             if ($connection->tableColumnExists($tmpTable, $column)) {
                                 if (!strlen($value)) {
                                     if ($connection->tableColumnExists($resource->getTable('pimgento_variant'), $column)) {
-                                        $data[$column] = 'v.' . $column;
-                                    } else {
-                                        $data[$column] = 'e.' . $column;
+                                        if (strpos($column, 'configurable_') !== false) {
+                                            unset($data[ $column ]);
+                                            $data [ str_replace('configurable_', '', $column) ] = 'v.' . $column;
+                                        } else {
+                                            $data[$column] = 'v.' . $column;
+                                        }
+                                    } elseif ( ! isset($data[ $column ])) {
+                                        if (strpos($column, 'configurable_') !== false) {
+                                            unset($data[ $column ]);
+                                            $data [ str_replace('configurable_', '', $column) ] = 'e.' . $column;
+                                        } else {
+                                            $data[$column] = 'e.' . $column;
+                                        }
                                     }
                                 } else {
                                     $data[$column] = new Expr('"' . $value . '"');
+                                }
+                            } elseif ($connection->tableColumnExists($resource->getTable('pimgento_variant'), $column)) {
+                                if ( ! strlen($value)) {
+                                    //set variant group label as product configurable name
+                                    foreach (array_keys($this->getStores()) as $store) {
+                                        if ($connection->tableColumnExists($tmpTable, $column . '-' . $store)) {
+                                            // unset variant group label in data array
+                                            unset($data[ $column ]);
+                                            $data[ $column . '-' . $store ] = 'v.' . $column;
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -372,6 +393,18 @@ class Import extends Factory
                 $connection->insertFromSelect($configurable, $tmpTable, array_keys($data))
             );
         }
+    }
+
+    protected function getStores()
+    {
+        return array_merge(
+            $this->_helperConfig->getStores(array('lang')), // en_US
+            $this->_helperConfig->getStores(array('lang', 'channel_code')), // en_US-channel
+            $this->_helperConfig->getStores(array('channel_code')), // channel
+            $this->_helperConfig->getStores(array('currency')), // USD
+            $this->_helperConfig->getStores(array('channel_code', 'currency')), // channel-USD
+            $this->_helperConfig->getStores(array('lang', 'channel_code', 'currency')) // en_US-channel-USD
+        );
     }
 
     /**
@@ -1037,8 +1070,11 @@ class Import extends Factory
                 if ($urlKey) {
                     $connection->update(
                         $tmpTable,
-                        [$column => new Expr('CONCAT(`' . $column . '`, "-", `sku`)')],
-                        ['`' . $column . '` = ?' => $urlKey]
+                        [$column => new Expr('REPLACE(LOWER(CONCAT(`' . $column . '`, "-", `sku`)), \'.\',\'-\')')],
+                        [
+                            '`' . $column . '` = ?' => $urlKey,
+                            '_type_id = ?' => 'simple'
+                        ]
                     );
                 }
             }
