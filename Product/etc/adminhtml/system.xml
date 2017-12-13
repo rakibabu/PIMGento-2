@@ -4,7 +4,7 @@
             <group id="product" translate="label" type="text" sortOrder="30" showInDefault="1" showInWebsite="0" showInStore="0">
                 <label>Products</label>
                 <field id="configurable_attribute_mapping" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="0" showInStore="0">
-                    <label>Attribute Mapping</label>
+                    <label>Configurable Attribute Mapping</label>
                     <frontend_model>Pimgento\Product\Block\Adminhtml\System\Config\Form\Field\Attribute</frontend_model>
                     <backend_model>Magento\Config\Model\Config\Backend\Serialized\ArraySerialized</backend_model>
                     <comment>Experimental: Fill additional configurable Magento attributes from Pim attributes</comment>

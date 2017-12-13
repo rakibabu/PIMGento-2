@@ -335,7 +335,27 @@ class Import extends Factory
                         }
                     }
                 }
+            }
 
+            $configurableAttributesMapping = $this->_scopeConfig->getValue('pimgento/product/configurable_attribute_mapping');
+
+            if ($configurableAttributesMapping) {
+                $configurableAttributesMapping = unserialize($configurableAttributesMapping);
+                if (is_array($configurableAttributesMapping)) {
+
+                    foreach ($configurableAttributesMapping as $configurableAttribute) {
+                        $attr = $configurableAttribute['magento_attribute'];
+                        $value = $configurableAttribute['pim_attribute'];
+
+                        if ($connection->tableColumnExists($resource->getTable('pimgento_variant'), $value)) {
+                            $data[ $attr ] = 'v.' . $value;
+                        } elseif ($connection->tableColumnExists($tmpTable, $value)) {
+                            $data[ $attr ] = 'e.' . $value;
+                        }
+
+                        // else no replace
+                    }
+                }
             }
 
             $configurable = $connection->select()
