@@ -62,7 +62,7 @@ class Import extends Factory
             $this->setStatus(false);
             $this->setMessage($this->getFileNotFoundErrorMessage());
         } else {
-            $this->_entities->createTmpTableFromFile($file, $this->getCode(), array('code', 'axis'));
+            $this->_entities->createTmpTableFromFile($file, $this->getCode(), array('code'));
         }
     }
 
@@ -125,6 +125,10 @@ class Import extends Factory
 
             $connection->addColumn($variantTable, $this->_columnName($column), 'TEXT');
         }
+
+        if (!$connection->tableColumnExists($tmpTable, 'axis')) {
+            $connection->addColumn($tmpTable, 'axis', 'VARCHAR(255)');
+        }
     }
 
     /**
@@ -163,9 +167,11 @@ class Import extends Factory
 
                 if ($connection->tableColumnExists($variantTable, $this->_columnName($column))) {
 
-                    $values[$i][$this->_columnName($column)] = $row[$column];
+                    if ($column != 'axis') {
+                        $values[$i][$this->_columnName($column)] = $row[$column];
+                    }
 
-                    if ($column == 'axis') {
+                    if ($column == 'axis' && !$connection->tableColumnExists($tmpTable, 'family_variant')) {
                         $axisAttributes = explode(',', $row['axis']);
 
                         $axis = array();
@@ -205,25 +211,6 @@ class Import extends Factory
     public function dropTable()
     {
         $this->_entities->dropTable($this->getCode());
-    }
-
-    /**
-     * Clean cache
-     */
-    public function cleanCache()
-    {
-        $types = array(
-            \Magento\Framework\App\Cache\Type\Block::TYPE_IDENTIFIER,
-            \Magento\PageCache\Model\Cache\Type::TYPE_IDENTIFIER
-        );
-
-        foreach ($types as $type) {
-            $this->_cacheTypeList->cleanType($type);
-        }
-
-        $this->setMessage(
-            __('Cache cleaned for: %1', join(', ', $types))
-        );
     }
 
     /**

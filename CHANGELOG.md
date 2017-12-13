@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file.
 
+## [100.3.0] - 2017-12-05
+
+  * update: Sample files updated with Akeneo 2.0 demo data
+  * update: Akeneo 2.0 compatibility (Product model and Variant Family)
+  * update: New module for upgrade from Magento 2.1 to 2.2 added (use only for upgrade)
+  * update: Magento 2.2 compatibility (compatibility preserved with previous versions)
+  * update: fix magic number
+  * update: fix SQL error in option import for non existing attribute
+
+## [100.2.23] - 2017-10-25
+
+  * update: set query number for rows insertion in configuration
+  * fix : avoid warning with website matching
+
+## [100.2.22] - 2017-09-27
+
+  * fix: Url Key localized
+
+## [100.2.21] - 2017-09-25
+
+  * fix: Variant table engine for big data
+  * fix: Attribute attached to a lot of families
+
+## [100.2.20] - 2017-09-05
+
+  * update: disabled media importation if needed
+
 ## [100.2.19] - 2017-08-30
 
   * update: EnhancedConnectorBundle requirement is now useless

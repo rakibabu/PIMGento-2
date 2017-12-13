@@ -6,6 +6,7 @@ use \Magento\Directory\Helper\Data;
 use \Magento\Framework\App\Filesystem\DirectoryList;
 use \Magento\Framework\App\Helper\AbstractHelper;
 use \Magento\Framework\App\Helper\Context;
+use \Pimgento\Import\Helper\Serializer as Json;
 use \Magento\Store\Model\StoreManagerInterface;
 use \Magento\Framework\Filesystem;
 use \Magento\Store\Model\ScopeInterface;
@@ -13,6 +14,12 @@ use \Magento\CatalogInventory\Model\Configuration as CatalogInventoryConfigurati
 
 class Config extends AbstractHelper
 {
+
+    /** Config keys */
+    const CONFIG_PIMGENTO_GENERAL_IMPORT_DIRECTORY  = 'pimgento/general/import_directory';
+    const CONFIG_PIMGENTO_GENERAL_WEBSITE_MAPPING   = 'pimgento/general/website_mapping';
+    const CONFIG_GENERAL_LOCALE_CODE                = 'general/locale/code';
+    const CONFIG_CURRENCY_OPTIONS_DEFAULT           = 'currency/options/default';
 
     /**
      * @var \Magento\Framework\Filesystem
@@ -30,6 +37,11 @@ class Config extends AbstractHelper
     protected $catalogInventoryConfiguration;
 
     /**
+     * @var Json
+     */
+    protected $serializer;
+
+    /**
      * Constructor
      *
      * 0
@@ -37,16 +49,19 @@ class Config extends AbstractHelper
      * @param Filesystem $fileSystem
      * @param StoreManagerInterface $storeManager
      * @param CatalogInventoryConfiguration $catalogInventoryConfiguration
+     * @param Json                          $serializer
      */
     public function __construct(
         Context $context,
         Filesystem $fileSystem,
         StoreManagerInterface $storeManager,
-        CatalogInventoryConfiguration $catalogInventoryConfiguration
+        CatalogInventoryConfiguration $catalogInventoryConfiguration,
+        Json $serializer
     ) {
         $this->fileSystem = $fileSystem;
         $this->storeManager = $storeManager;
         $this->catalogInventoryConfiguration = $catalogInventoryConfiguration;
+        $this->serializer = $serializer;
 
         parent::__construct($context);
     }
@@ -62,7 +77,7 @@ class Config extends AbstractHelper
         $varDirectory = $this->fileSystem->getDirectoryRead(DirectoryList::VAR_DIR);
 
         return $varDirectory->getAbsolutePath(
-            $this->scopeConfig->getValue('pimgento/general/import_directory')
+            $this->scopeConfig->getValue(self::CONFIG_PIMGENTO_GENERAL_IMPORT_DIRECTORY)
         );
     }
 
@@ -82,10 +97,10 @@ class Config extends AbstractHelper
             $arrayKey = array($arrayKey);
         }
 
-        $channels = $this->scopeConfig->getValue('pimgento/general/website_mapping');
+        $channels = $this->scopeConfig->getValue(self::CONFIG_PIMGENTO_GENERAL_WEBSITE_MAPPING);
 
         if ($channels) {
-            $channels = unserialize($channels);
+            $channels = $this->serializer->unserialize($channels);
             if (!is_array($channels)) {
                 $channels = array();
             }
@@ -99,7 +114,7 @@ class Config extends AbstractHelper
             $channel = $website->getCode();
 
             foreach ($channels as $match) {
-                if ($match['website'] == $website->getCode()) {
+                if (isset($match['website']) && $match['website'] == $website->getCode()) {
                     $channel = $match['channel'];
                 }
             }
@@ -125,14 +140,14 @@ class Config extends AbstractHelper
                         break;
                     case 'lang':
                         $combine[] = $this->scopeConfig->getValue(
-                            'general/locale/code',
+                            self::CONFIG_GENERAL_LOCALE_CODE,
                             ScopeInterface::SCOPE_STORE,
                             $store->getId()
                         );
                         break;
                     case 'currency':
                         $combine[] = $this->scopeConfig->getValue(
-                            'currency/options/default',
+                            self::CONFIG_CURRENCY_OPTIONS_DEFAULT,
                             ScopeInterface::SCOPE_STORE,
                             $store->getId()
                         );
@@ -156,12 +171,12 @@ class Config extends AbstractHelper
                 'website_code' => $website->getCode(),
                 'channel_code' => $channel,
                 'lang'         => $this->scopeConfig->getValue(
-                    'general/locale/code',
+                    self::CONFIG_GENERAL_LOCALE_CODE,
                     ScopeInterface::SCOPE_STORE,
                     $store->getId()
                 ),
                 'currency'     => $this->scopeConfig->getValue(
-                    'currency/options/default',
+                    self::CONFIG_CURRENCY_OPTIONS_DEFAULT,
                     ScopeInterface::SCOPE_STORE,
                     $store->getId()
                 ),
@@ -191,6 +206,11 @@ class Config extends AbstractHelper
         return $this->catalogInventoryConfiguration->getDefaultScopeId();
     }
 
+    /**
+     * Retrieve default locale
+     *
+     * @return mixed
+     */
     public function getDefaultLocale()
     {
         return $this->scopeConfig->getValue(

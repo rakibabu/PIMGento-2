@@ -5,6 +5,7 @@ namespace Pimgento\Product\Setup;
 use Magento\Framework\Setup\UpgradeDataInterface;
 use Magento\Framework\Setup\ModuleContextInterface;
 use Magento\Framework\Setup\ModuleDataSetupInterface;
+use Pimgento\Product\Helper\Config;
 
 /**
  * Upgrade Data script
@@ -27,7 +28,7 @@ class UpgradeData implements UpgradeDataInterface
             $data = $installer->getConnection()->fetchOne(
                 $installer->getConnection()->select()
                     ->from($installer->getTable('core_config_data'), array('value'))
-                    ->where('path = ?', 'pimgento/product/configurable_attributes')
+                    ->where('path = ?', Config::CONFIG_PIMGENTO_PRODUCT_CONFIGURABLE_ATTR)
                     ->limit(1)
             );
 
@@ -47,11 +48,10 @@ class UpgradeData implements UpgradeDataInterface
             $installer->getConnection()->update(
                 $installer->getTable('core_config_data'),
                 array('value' => serialize($matches)),
-                array('path = ?' => 'pimgento/product/configurable_attributes')
+                array('path = ?' => Config::CONFIG_PIMGENTO_PRODUCT_CONFIGURABLE_ATTR)
             );
         }
 
         $installer->endSetup();
-
     }
 }

@@ -24,7 +24,10 @@ class AddPimgentoImportObserver extends AbstractAddImportObserver implements Obs
      */
     protected function getImportName()
     {
-        return __('Variants');
+        if ($this->moduleManager->isEnabled('Pimgento_VariantFamily')) {
+            return __('Product Model');
+        }
+        return __('Variant');
     }
 
     /**
@@ -54,6 +57,12 @@ class AddPimgentoImportObserver extends AbstractAddImportObserver implements Obs
      */
     protected function getStepsDefinition()
     {
+        $import = __('Variant');
+
+        if ($this->moduleManager->isEnabled('Pimgento_VariantFamily')) {
+            $import = __('Product Model');
+        }
+
         $stepsBefore = array(
             array(
                 'comment' => __('Create temporary table'),
@@ -64,15 +73,15 @@ class AddPimgentoImportObserver extends AbstractAddImportObserver implements Obs
                 'method'  => 'insertData',
             ),
             array(
-                'comment' => __('Clean up variants'),
+                'comment' => __('Clean up %1', $import),
                 'method'  => 'removeColumns',
             ),
             array(
-                'comment' => __('Variants data enrichment'),
+                'comment' => __('%1 data enrichment', $import),
                 'method'  => 'addColumns',
             ),
             array(
-                'comment' => __('Fill variants data'),
+                'comment' => __('Fill %1 data', $import),
                 'method'  => 'updateData',
             )
         );
@@ -82,10 +91,6 @@ class AddPimgentoImportObserver extends AbstractAddImportObserver implements Obs
                 'comment' => __('Drop temporary table'),
                 'method'  => 'dropTable',
             ),
-            array(
-                'comment' => __('Clean cache'),
-                'method'  => 'cleanCache',
-            )
         );
 
         return array_merge(

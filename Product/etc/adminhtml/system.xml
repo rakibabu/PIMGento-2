@@ -3,6 +3,12 @@
         <section id="pimgento">
             <group id="product" translate="label" type="text" sortOrder="30" showInDefault="1" showInWebsite="0" showInStore="0">
                 <label>Products</label>
+                <field id="configurable_attribute_mapping" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Attribute Mapping</label>
+                    <frontend_model>Pimgento\Product\Block\Adminhtml\System\Config\Form\Field\Attribute</frontend_model>
+                    <backend_model>Magento\Config\Model\Config\Backend\Serialized\ArraySerialized</backend_model>
+                    <comment>Experimental: Fill additional configurable Magento attributes from Pim attributes</comment>
+                </field>
                 <field id="attribute_mapping" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="0" showInStore="0">
                     <label>Attribute Mapping</label>
                     <frontend_model>Pimgento\Product\Block\Adminhtml\System\Config\Form\Field\Attribute</frontend_model>
@@ -24,6 +30,10 @@
             </group>
             <group id="image" translate="label" type="text" sortOrder="120" showInDefault="1" showInWebsite="0" showInStore="0">
                 <label>Image</label>
+                <field id="enabled" translate="label" type="select" sortOrder="5" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Enabled</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
                 <field id="path" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="0" showInStore="0">
                     <label>Relative Path to media folder</label>
                     <comment>If empty, will look at in the folder of the current imported file</comment>
