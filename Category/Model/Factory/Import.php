@@ -6,11 +6,13 @@ use \Pimgento\Import\Model\Factory;
 use \Pimgento\Entities\Model\Entities;
 use \Pimgento\Import\Helper\Config as helperConfig;
 use \Pimgento\Import\Helper\UrlRewrite as urlRewriteHelper;
+use \Pimgento\Category\Helper\Config;
 use \Magento\Framework\Event\ManagerInterface;
 use \Magento\Catalog\Model\Category;
 use \Magento\Framework\App\Cache\TypeListInterface;
 use \Magento\Framework\Module\Manager as moduleManager;
 use \Magento\Framework\App\Config\ScopeConfigInterface as scopeConfig;
+use \Magento\Framework\DB\Adapter\AdapterInterface;
 use \Magento\Staging\Model\VersionManager;
 use \Zend_Db_Expr as Expr;
 use \Exception;
@@ -127,7 +129,7 @@ class Import extends Factory
                 $select = $connection->select()
                     ->from($tmpTable, ['entity_id' => '_entity_id', 'name' => 'label-' . $local]);
 
-                $updateUrlKeyConfig = $this->_scopeConfig->getValue('pimgento/category/update_url_key');
+                $updateUrlKeyConfig = $this->_scopeConfig->getValue(Config::CONFIG_PIMGENTO_CATEGORY_UPDATE_URL_KEY);
 
                 if (!$updateUrlKeyConfig) {
                     $select->where('_is_new = ?', 1);
@@ -263,7 +265,7 @@ class Import extends Factory
             $parents = $connection->select()->from($tmpTable, $values);
             $connection->query(
                 $connection->insertFromSelect(
-                    $parents, $resource->getTable('sequence_catalog_category'), array_keys($values), 1
+                    $parents, $resource->getTable('sequence_catalog_category'), array_keys($values), AdapterInterface::INSERT_ON_DUPLICATE
                 )
             );
         }
@@ -290,7 +292,7 @@ class Import extends Factory
         $parents = $connection->select()->from($tmpTable, $values);
         $connection->query(
             $connection->insertFromSelect(
-                $parents, $table, array_keys($values), 1
+                $parents, $table, array_keys($values), AdapterInterface::INSERT_ON_DUPLICATE
             )
         );
 
@@ -325,7 +327,7 @@ class Import extends Factory
         );
 
         $this->_entities->setValues(
-            $this->getCode(), $resource->getTable('catalog_category_entity'), $values, 3, 0, 2
+            $this->getCode(), $resource->getTable('catalog_category_entity'), $values, 3, 0, AdapterInterface::INSERT_IGNORE
         );
 
         $stores = $this->_helperConfig->getStores('lang');
@@ -392,7 +394,7 @@ class Import extends Factory
                         $this->getCode(),
                         $store['store_id'],
                         $column,
-                        $this->_scopeConfig->getValue('catalog/seo/category_url_suffix')
+                        $this->_scopeConfig->getValue(config::CONFIG_CATALOG_SEO_CATEGORY_URL_SUFFIX)
                     );
                 }
             }

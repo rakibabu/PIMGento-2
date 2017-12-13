@@ -1,12 +1,14 @@
 <?php
 
-namespace Pimgento\Option\Model\Factory;
+namespace Pimgento\VariantFamily\Model\Factory;
 
 use \Pimgento\Import\Model\Factory;
 use \Pimgento\Entities\Model\Entities;
 use \Pimgento\Import\Helper\Config as helperConfig;
+use \Pimgento\VariantFamily\Helper\Config as helperVariant;
 use \Magento\Framework\Event\ManagerInterface;
 use \Magento\Framework\App\Cache\TypeListInterface;
+use \Magento\Eav\Model\Entity\Attribute\SetFactory;
 use \Magento\Framework\Module\Manager as moduleManager;
 use \Magento\Framework\App\Config\ScopeConfigInterface as scopeConfig;
 use \Zend_Db_Expr as Expr;
@@ -26,8 +28,14 @@ class Import extends Factory
     protected $_cacheTypeList;
 
     /**
+     * @var helperVariant
+     */
+    protected $_helperVariant;
+
+    /**
      * @param \Pimgento\Entities\Model\Entities $entities
      * @param \Pimgento\Import\Helper\Config $helperConfig
+     * @param \Pimgento\VariantFamily\Helper\Config $helperVariant
      * @param \Magento\Framework\Module\Manager $moduleManager
      * @param \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig
      * @param \Magento\Framework\Event\ManagerInterface $eventManager
@@ -37,6 +45,7 @@ class Import extends Factory
     public function __construct(
         Entities $entities,
         helperConfig $helperConfig,
+        helperVariant $helperVariant,
         moduleManager $moduleManager,
         scopeConfig $scopeConfig,
         ManagerInterface $eventManager,
@@ -47,6 +56,7 @@ class Import extends Factory
         parent::__construct($helperConfig, $eventManager, $moduleManager, $scopeConfig, $data);
         $this->_entities = $entities;
         $this->_cacheTypeList = $cacheTypeList;
+        $this->_helperVariant = $helperVariant;
     }
 
     /**
@@ -60,9 +70,8 @@ class Import extends Factory
             $this->setContinue(false);
             $this->setStatus(false);
             $this->setMessage($this->getFileNotFoundErrorMessage());
-;
         } else {
-            $this->_entities->createTmpTableFromFile($file, $this->getCode(), array('code', 'attribute'));
+            $this->_entities->createTmpTableFromFile($file, $this->getCode(), array('code'));
         }
     }
 
@@ -81,89 +90,78 @@ class Import extends Factory
     }
 
     /**
-     * Match code with entity
+     * Update Axis column
      */
-    public function matchEntity()
-    {
-        $this->_entities->matchEntity($this->getCode(), 'code', 'eav_attribute_option', 'option_id', 'attribute');
-    }
-
-    /**
-     * Insert options
-     */
-    public function insertOptions()
+    public function updateAxis()
     {
         $resource = $this->_entities->getResource();
         $connection = $resource->getConnection();
         $tmpTable = $this->_entities->getTableName($this->getCode());
 
-        $columns = array(
-            'option_id'  => 'a._entity_id',
-            'sort_order' => new Expr('"0"')
-        );
-        if ($connection->tableColumnExists($tmpTable, 'sort_order')) {
-            $columns['sort_order'] = 'a.sort_order';
+        $connection->addColumn($tmpTable, '_axis', 'VARCHAR(255)');
+
+        $columns = [];
+        for ($i = 1; $i <= $this->_helperVariant->getMaxAxesNumber(); $i++) {
+            $columns[] = 'variant-axes_' . $i;
         }
 
-        $options = $connection->select()
-            ->from(array('a' => $tmpTable), $columns)
-            ->joinInner(
-                array('b' => $resource->getTable('pimgento_entities')),
-                'a.attribute = b.code AND b.import = "attribute"',
-                array(
-                    'attribute_id' => 'b.entity_id'
-                )
+        foreach ($columns as $key => $column) {
+            if (!$connection->tableColumnExists($tmpTable, $column)) {
+                unset($columns[$key]);
+            }
+        }
+
+        if (!empty($columns)) {
+            $update = 'TRIM(BOTH "," FROM CONCAT(`' . join('`, "," ,`', $columns) . '`))';
+            $connection->update($tmpTable, ['_axis' => new Expr($update)]);
+        }
+
+        $variantFamily = $connection->query(
+            $connection->select()->from($tmpTable)
+        );
+
+        $attributes = $connection->fetchPairs(
+            $connection->select()->from(
+                $resource->getTable('eav_attribute'), array('attribute_code', 'attribute_id')
+            )
+            ->where('entity_type_id = ?', 4)
+        );
+
+        while (($row = $variantFamily->fetch())) {
+            $axisAttributes = explode(',', $row['_axis']);
+
+            $axis = [];
+
+            foreach ($axisAttributes as $code) {
+                if (isset($attributes[$code])) {
+                    $axis[] = $attributes[$code];
+                }
+            }
+
+            $connection->update($tmpTable, ['_axis' => join(',', $axis)], ['code = ?' => $row['code']]);
+        }
+    }
+
+    /**
+     * Update Product Model
+     */
+    public function updateProductModel()
+    {
+        $resource = $this->_entities->getResource();
+        $connection = $resource->getConnection();
+        $tmpTable = $this->_entities->getTableName($this->getCode());
+
+        $query = $connection->select()
+            ->from(false, ['axis' => 'f._axis'])
+            ->joinLeft(
+                ['f' => $tmpTable],
+                'p.family_variant = f.code',
+                []
             );
 
         $connection->query(
-            $connection->insertFromSelect(
-                $options,
-                $resource->getTable('eav_attribute_option'),
-                array('option_id', 'sort_order', 'attribute_id'),
-                1
-            )
+            $connection->updateFromSelect($query, ['p' => $resource->getTable('pimgento_variant')])
         );
-    }
-
-    /**
-     * Insert Values
-     */
-    public function insertValues()
-    {
-        $resource = $this->_entities->getResource();
-        $connection = $resource->getConnection();
-        $tmpTable = $this->_entities->getTableName($this->getCode());
-
-        $stores = $this->_helperConfig->getStores('lang');
-
-        foreach ($stores as $local => $data) {
-            if ($connection->tableColumnExists($tmpTable, 'label-' . $local)) {
-                foreach ($data as $store) {
-                    $options = $connection->select()
-                        ->from(
-                            array('a' => $tmpTable),
-                            array(
-                                'option_id' => '_entity_id',
-                                'store_id'  => new Expr($store['store_id']),
-                                'value'     => $store['store_id'] == 0 ? 'code' : 'label-' . $local
-                            )
-                        )->joinInner(
-                            array('b' => $resource->getTable('pimgento_entities')),
-                            'a.attribute = b.code AND b.import = "attribute"',
-                            array()
-                        );
-
-                    $connection->query(
-                        $connection->insertFromSelect(
-                            $options,
-                            $resource->getTable('eav_attribute_option_value'),
-                            array('option_id', 'store_id', 'value'),
-                            1
-                        )
-                    );
-                }
-            }
-        }
     }
 
     /**
@@ -191,6 +189,27 @@ class Import extends Factory
         $this->setMessage(
             __('Cache cleaned for: %1', join(', ', $types))
         );
+    }
+
+    /**
+     * Replace column name
+     *
+     * @param string $column
+     * @return string
+     */
+    protected function _columnName($column)
+    {
+        $matches = array(
+            'label' => 'name',
+        );
+
+        foreach ($matches as $name => $replace) {
+            if (preg_match('/^'. $name . '/', $column)) {
+                $column = preg_replace('/^'. $name . '/', $replace, $column);
+            }
+        }
+
+        return $column;
     }
 
 }
