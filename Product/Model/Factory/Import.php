@@ -361,7 +361,7 @@ class Import extends Factory
             $configurableAttributesMapping = $this->_scopeConfig->getValue('pimgento/product/configurable_attribute_mapping');
 
             if ($configurableAttributesMapping) {
-                $configurableAttributesMapping = unserialize($configurableAttributesMapping);
+                $configurableAttributesMapping = $this->serializer->unserialize($configurableAttributesMapping);
                 if (is_array($configurableAttributesMapping)) {
 
                     foreach ($configurableAttributesMapping as $configurableAttribute) {
