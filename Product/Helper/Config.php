@@ -11,6 +11,7 @@ class Config extends AbstractHelper
 {
     /** Config keys */
     const CONFIG_PIMGENTO_PRODUCT_ATTR_MAPPING      = 'pimgento/product/attribute_mapping';
+    const CONFIG_PIMGENTO_PRODUCT_CONFIG_ATTR_MAPPING      = 'pimgento/product/configurable_attribute_mapping';
     const CONFIG_PIMGENTO_PRODUCT_CONFIGURABLE_ATTR = 'pimgento/product/configurable_attributes';
     const CONFIG_PIMGENTO_PRODUCT_TAX_CLASS         = 'pimgento/product/tax_class';
     const CONFIG_PIMGENTO_PRODUCT_IMAGE_ENABLED     = 'pimgento/image/enabled';
